@@ -43,9 +43,9 @@ Response = subclass object where
   #:
   close = ~> None
 
-  #: Write the data in this response into an object.
+  #: Write the data from this response into an object.
   #:
-  #: write_to :: coroutine a
+  #: write_to :: IOBase -> coroutine a
   #:
   write_to = tools.async $ response ~> response.write @data
 
@@ -82,7 +82,7 @@ IOResponse = subclass Response where
 
   #: Send the contents of a file object.
   #:
-  #: write_to :: coroutine a
+  #: write_to :: IOBase -> coroutine a
   #:
   write_to = tools.async $ response ~>
     # TODO make this async?

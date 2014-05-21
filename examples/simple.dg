@@ -1,0 +1,100 @@
+import '/asyncio'
+
+import '/dogeweb'
+import '/dogeweb/r'
+
+# http://github.com/pyos/jinja-hamlike
+import '/hamlike'
+
+
+app = dogeweb.app $ r.dir
+  # `r.dir` is intended to route between submodules. For example, suppose you have
+  # a handler named `my_handler`. You find an app that provides its own handler
+  # `yobaapp.handler`, and decide that you MUST HAVE IT ON YOUR SERVER THIS INSTANT.
+  # So you calm down a bit then write
+  #
+  #    my_handler = r.dir
+  #      '/yobaapp/', yobaapp.handler
+  #      '/', my_handler
+  #
+  # Instant 2X APPLICATION COMBO!
+  #
+  '/request/', r.file
+    # `r.file` routes between subpaths relative to the current module.
+    # It does not support wildcards for now; that'll be available soon.
+    '/method/',   ~> '{}\n'.format @method
+    '/path/',     ~> '{}\n'.format @path
+    '/payload/', r.method
+      # `r.method` is rather straightforward.
+      'GET',  ~> 'POST something here.\n'
+      'POST', ~> '{}\n'.format @payload
+
+  # Each route is a function that accepts a request as its first argument
+  # and returns a response. In dg, `~> x` creates a property instead;
+  # that's acceptable, too.
+  '/static/', ~>
+    # The only requirement for `r.dir` is that the requested path starts with
+    # the specified directory. The rest of the path can be anything.
+    # (NOTE: it can even contain stuff like `..`, so don't actually pass it to `@static`.)
+    # The attribute `path` of a request contains the path *relative to the module*,
+    # while `parent` is the path to the module itself.
+    @static $ @path.lstrip '/'
+
+  '/route/', 'test_route', r.file
+    # Normally, each argument to `r.dir` or `r.file` is a 2-tuple `(path, handler)`.
+    # There is an optional second item, though, which specifies the name for this route.
+    # This name can be used to generate URLs; e.g. in order to create a link
+    # from `test_route.parent` to `test_route.name`, one would write `request.url_for "..name"`
+    # in a template.
+    '/name/',   'name',   ~> '{}\n'.format @handler
+    '/parent/', 'parent', ~> '{}\n'.format @parent
+
+  '/', r.file
+    '/',             ~> somepage
+    '/favicon.ico',  ~> @redirect '/static/favicon.ico'
+    '/async/sleep/', ~>
+      # A handler can be an asyncio coroutine, too.
+      # It's not necessary to use the decorator, though; a generator
+      # is still a generator.
+      yield from $ asyncio.sleep 5
+      # Acceptable return values are strings (which are assumed to be UTF-8
+      # HTML pages), 2-tuples `(response code, another string)`, and instances
+      # of `dogeweb.response.Response`.
+      200, 'Done sleeping.\n'
+
+
+somepage = hamlike.parse '''
+%!doctype html
+%html
+  %head
+    %meta charset="utf-8"
+    %title -> Hello, World!
+    %link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"
+    %link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css"
+    %link rel="stylesheet" href="/static/starter-template.css"
+    %script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"
+    %script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"
+  %body
+    %div.navbar.navbar-inverse.navbar-fixed-top role="navigation"
+      %div.container
+        %div.navbar-header
+          %button.navbar-toggle type="button" data-toggle="collapse" data-target=".navbar-collapse"
+            %span.sr-only -> Toggle navigation
+            %span.icon-bar
+            %span.icon-bar
+            %span.icon-bar
+          %a.navbar-brand href="#" -> Project name
+        %div.colapse.navbar-collapse
+          %ul.nav.navbar-nav
+            %li.active -> %a href="#" -> Home
+            %li -> %a href="#about"   -> About
+            %li -> %a href="#contact" -> Contact
+    %div.container
+      %div.starter-template
+        %h1     -> Bootstrap starter template
+        %p.lead -> Use this document as a way to quickly start any new project.<br>
+                   All you get is this text and a mostly barebones HTML document
+'''
+
+
+app.run '0.0.0.0' 8000

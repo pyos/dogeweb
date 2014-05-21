@@ -1,0 +1,102 @@
+import '/traceback'
+
+import '/asyncio'
+import '/aiohttp'
+import '/aiohttp/server'   qualified
+import '/aiohttp/parsers'  qualified
+import '/aiohttp/protocol' qualified
+
+import 'tools'
+import 'request'
+import 'response'
+import 'response/Abort'
+
+
+#: The default error handler. Do not use it. EVER.
+#:
+#: _safe_error :: Request Abort -> Response
+#:
+_safe_error = tools.async $ err ~>
+  if err.code == 500 =>
+    # TODO actual logging?
+    print '------------ FIX THIS.'
+    traceback.print_exception (type err) err err.__traceback__
+    print '------------ FIX THAT.'
+  response.Response err.code err.headers $ b'Error ' + (str err.code).encode 'ascii' + b'\r\n'
+
+
+Protocol = subclass aiohttp.server.ServerHttpProtocol where
+  #: An extension of the HTTP async protocol that parses everything it can,
+  #: then calls an asyncio coroutine.
+  #:
+  #: handler :: Request       -> object -- a function that creates something `responsify`able.
+  #: onerror :: Request Abort -> object -- a separate handler called in case of an HTTP error.
+  #:
+  __init__ = handler onerror *: a **: k ~>
+    @handler = handler
+    @onerror = onerror or _safe_error
+    (super Protocol self).__init__ *: a **: k
+
+  #: Do all that stuff.
+  #:
+  #: handle_request :: RawRequestMessage DataQueue -> coroutine a
+  #:
+  handle_request = tools.async $ message payload ~>
+    data = b''
+    while True => except
+      err         => chunk = yield from payload.read!
+      err is None => data += chunk
+      err :: aiohttp.EofStream => break!
+
+    req   = request.Request message data
+    resp1 = except
+      outer => except
+        # Layer 1. Call into the default handler.
+        inner => yield from $ response.respondify $ @handler req
+        inner :: Abort     => raise inner
+        inner :: Exception => req.abort 500  # `inner` is stored as `__context__`.
+      outer :: Abort => except
+        middle => except
+          # Layer 2. The default handler failed or raised an HTTP error.
+          #          Call into the error handler.
+          inner => yield from $ response.respondify $ @onerror req outer
+          inner :: Abort     => raise inner
+          inner :: Exception => req.abort 500
+        middle :: Abort =>
+          # Layer 3. The error handler FAILED TOO. Use a safe default.
+          # If *this* fails, we're doomed.
+          yield from $ _safe_error req middle
+
+    resp2 = aiohttp.Response @writer resp1.code
+    for (k, v) in resp1.headers.items! => resp2.add_header k v
+    resp2.send_headers!
+    yield from $ resp1.write_to resp2
+    yield from $ resp2.write_eof!
+
+
+Server = subclass object where
+  #: `Protocol` is actually just a single connection.
+  #:
+  #: handler :: typeof Protocol.handler
+  #: onerror :: typeof Protocol.onerror
+  #:
+  __init__ = handler onerror: _safe_error *: a **: k  ~>
+    @handler = handler
+    @onerror = onerror
+    None
+
+  #: Create a new connection.
+  #:
+  #: () :: -> Protocol
+  #:
+  __call__ = self -> Protocol @handler @onerror
+
+  #: Start the dev server. `gunicorn` had an asyncio worker, I think?
+  #:
+  #: run :: str int -> ()
+  #:
+  run = host port ~>
+    loop = asyncio.get_event_loop!
+    srv  = loop.run_until_complete $ loop.create_server self host port
+    except err => loop.run_forever!
+           err :: KeyboardInterrupt => exit 0

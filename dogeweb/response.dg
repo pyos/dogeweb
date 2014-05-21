@@ -1,0 +1,136 @@
+import '/os'
+import '/mimetypes'
+
+import 'tools'
+
+
+#: Convert an arbitrary object into a response.
+#:
+#: Currently supported are strings (simple HTML responses in UTF-8),
+#: `(code, string)` tuples and actual `Response`s, as well as coroutines
+#: that return them.
+#:
+#: respondify :: object -> coroutine Response
+#:
+respondify = tools.async $ smth -> if
+  smth :: Response => smth
+  smth :: tuple    => Response (fst smth) dict! $ (snd smth).encode 'utf-8'
+  smth :: str      => Response 200        dict! $ smth      .encode 'utf-8'
+  otherwise        => yield from $ respondify $ yield from smth
+
+
+Abort = subclass Exception where
+  #: The exception raised on HTTP errors.
+  #:
+  #: ???
+  #:
+  __init__ = @code @description: '' @headers: dict! ~>
+    (super Abort self).__init__ @code @description @headers
+
+
+Response = subclass object where
+  __init__ = code headers data ~>
+    @code    = code
+    @headers = headers
+    @data    = data
+    @headers = @defheaders
+    @headers.update headers
+    None
+
+  #: Release all resources attached to this response.
+  #:
+  #: close :: a
+  #:
+  close = ~> None
+
+  #: Write the data in this response into an object.
+  #:
+  #: write_to :: coroutine a
+  #:
+  write_to = tools.async $ response ~> response.write @data
+
+  #: Headers that are required for all responses, such as `Content-Type` and `Content-Length`.
+  #:
+  #: defheaders :: dict str str
+  #:
+  defheaders = ~> dict'
+    'Content-Type',   'text/html; charset=utf-8'
+    'Content-Length', str $ len @data
+    # NOTE this should be replaced with `'Transfer-Encoding', 'chunked'` if
+    #      content-length could not be calculated.
+
+
+IOResponse = subclass Response where
+  #: A `Response` that sends data from a file.
+  #:
+  #: fileobj :: IOBase -- the file to read from.
+  #: bufsize :: int    -- how much data to read every syscall.
+  #:
+  __init__ = code fileobj headers bufsize: 16384 ~>
+    @fileobj = fileobj
+    @bufsize = bufsize
+    Response.__init__ self code headers b''
+
+  #: Close the file object, if applicable.
+  #:
+  #: close :: a
+  #:
+  close = ~> except
+    err => @fileobj.close!
+    err :: IOError        =>
+    err :: AttributeError =>
+
+  #: Send the contents of a file object.
+  #:
+  #: write_to :: coroutine a
+  #:
+  write_to = tools.async $ response ~>
+    # TODO make this async?
+    while (b = @fileobj.read @bufsize) => response.write b
+
+  #: IO-specific headers. `Content-Length` is determined via `stat`; if not possible,
+  #: `Transfer-Encoding: chunked` is used instead.
+  #:
+  #: defheaders :: dict str str
+  #:
+  defheaders = ~> xs where
+    xs = dict' $ except
+      err => 'Content-Length', str (os.stat @fileobj.fileno!).st_size
+      err :: IOError        => 'Transfer-Encoding', 'chunked'
+      err :: AttributeError => 'Transfer-Encoding', 'chunked'
+
+
+#: Methods added to `Request` objects since they require fields only available in it.
+#:
+#: No parameters.
+#:
+ContextAware = subclass object where
+  #: Stop the response handler, return an error message.
+  #:
+  #: abort :: int (Optional str) (Optional (dict str str)) -> a
+  #:
+  abort = code description: '' headers: dict! ~> raise $ Abort code description headers
+
+  #: Issue a 302 Found. The client is redirected to a new URL.
+  #:
+  #: redirect :: str (Optional str) -> a
+  #:
+  redirect = path description: '' ~> raise $ Abort 302 description $ dict' ('Location', path)
+
+  #: Serve a single static file.
+  #:
+  #: static :: str (Optional bool) (Optional int) (Optional (dict str str)) -> Response
+  #:
+  static = path attachment: True code: 200 headers: dict! ~> except
+    # TODO make this crap asynchronous.
+    err => fd = open path 'rb'
+    err :: IOError => @abort 404
+    err is None    =>
+      attachment and not ('Content-Disposition' in headers) =>
+        # TODO specify `filename`.
+        headers !! 'Content-Disposition' = 'attachment'
+      not $ 'Content-Type' in headers =>
+        mime = fst $ mimetypes.guess_type path strict: False
+        mime =>
+          headers !! 'Content-Type' = mime
+      IOResponse code fd headers

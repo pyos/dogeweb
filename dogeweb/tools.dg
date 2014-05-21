@@ -1,0 +1,11 @@
+import '/asyncio'
+
+
+#: Convert a function OR a property into a coroutine.
+#: (`asyncio.coroutine` only works on functions.)
+#:
+#: async :: (Either (*a **b -> c) (property (*a **b -> c))) -> *a **b -> coroutine c
+#:
+async = fn -> if
+  fn :: property => asyncio.coroutine fn.fget
+  otherwise      => asyncio.coroutine fn

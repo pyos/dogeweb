@@ -1,0 +1,175 @@
+import '/re'
+
+#: Concatenate the result of calling two functions with the same arguments.
+#: Used to construct paths.
+#:
+#: concatfs :: (**a -> str) (**a -> str) -> **a -> str
+#:
+concatfs = f g -> **: k -> f **: k + g **: k
+
+
+#: Call a function if it is indeed a function; if it's actually a property,
+#: call its `fget` method. Allows to use `~> methods` as routes.
+#:
+#: callprop :: (Either (*a **b -> c) (property c)) *a **b -> c
+#:
+callprop = f *: a **: kw -> if
+  f :: property => f.fget *: a **: kw
+  otherwise     => f      *: a **: kw
+
+
+#: Common tools used in routing.
+#:
+#: ???
+#:
+util = subclass object where
+  #: Given a router that accepts regular expressions that match certain
+  #: parts as groups, construct one that accepts strings where non-constant parts
+  #: are specified `<int:like_this>`. If one of the matches ends with a slash,
+  #: a redirect is created that adds that slash to the end of the URLs that lack it;
+  #: for example, if a route for `/something/` exists, `/something` will redirect there.
+  #:
+  #: pathrouter :: Router Regex -> Router str
+  #:
+  pathrouter = f no_bare: False -> *: xs ->
+    routemap = dict!
+    routerev = dict!
+    router   = f routerev: routerev *:
+      where for q in xs =>
+        data, name, h = if
+          len q > 2 => q !! 0, q !! 1, q !! 2
+          otherwise => q !! 0, None,   q !! 1
+        name = name or getattr h '__name__' None
+
+        data = re.sub r'/+' '/' data
+        bare = '/' + data.strip '/'
+
+        if data == bare and bare != '/' and no_bare =>
+          raise $ ValueError $ '{!r} must end with a slash'.format data
+
+        # TODO do something different.
+        data_re = re.compile $ re.escape data
+        bare_re = re.compile $ re.escape bare
+        name =>
+          routemap !! name = (data -> **: k -> data) data
+          routerev !! h    = name
+          hasattr h 'routemap' => for (r, v) in h.routemap.items! =>
+            routemap !! (name + '.' + r) = concatfs (routemap !! name) v
+
+        if data == bare => yield (data_re, h)
+           otherwise    =>
+             yield (data_re, h)
+             yield (bare_re, req -> req.redirect $ req.fullpath + '/')
+    router.routemap = routemap
+    router.routerev = routerev
+    router
+
+  #: Check whether a requested `Host` is a subdomain of another.
+  #:
+  #: subdomain :: str str -> bool
+  #:
+  subdomain = mask host -> mask == host or host.endswith ('.' + mask)
+
+  #: Check whether a path is a subpath of another one. Return the length
+  #: of the matched component and a dictionary of groups.
+  #:
+  #: startswith :: Regex str -> Maybe (str, dict str str)
+  #:
+  startswith = regex path -> (m = regex.match path) => (m.end! - 1, m.groupdict!)
+
+  #: Check whether a path matches the route exactly. Return value is the same
+  #: as for `startswith`.
+  #:
+  #: strict :: Regex str -> Maybe (str, dict str str)
+  #:
+  strict = regex path -> (m = regex.match path) and m.end! == len path => (path, m.groupdict!)
+
+
+#: Route on HTTP method. Method names are uppercase.
+#: `HEAD` is routed to `GET` unless redefined.
+#:
+#: method :: Router str
+#:
+method = *: choices -> req **: k -> next $
+  where
+    for (method, fn) in choices =>
+      if method == req.method or (req.method == 'HEAD' and method == 'GET') =>
+        yield $ callprop fn req **: k
+    req.abort 405
+
+
+#: Route on HTTP path. If a request was made to `/something` and a route was found
+#: that matches `/something/`, a redirect is issued.
+#:
+#: file :: Router str
+#:
+file = util.pathrouter $ *: choices routerev -> req **: k -> next $
+  where
+    for (path, fn) in choices =>
+      if (match = util.strict path req.path) =>
+        req.enter $ routerev.get fn
+        k.update  $ snd match
+        yield     $ callprop fn req **: k
+    req.abort 404
+
+
+#: Route between multiple other routers as if they were subdirectories::
+#:
+#:   r.dir
+#:     '/dir1/', r.file
+#:       '/file1', handler1  #=> /dir1/file1
+#:       '/file2', handler2  #=> /dir1/file2
+#:     '/', r.file
+#:       '/file3', handler3  #=> /file3
+#:
+#: Directory names may contain fields, just like file names.
+#:
+#: dir :: Router str
+#:
+dir = util.pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
+  where
+    for (path, fn) in choices =>
+      if (match = util.startswith path req.path) =>
+        req.parent += req.path !! slice None (fst match)
+        req.path    = req.path !! slice (fst match) None
+        req.enter $ routerev.get fn
+        k.update  $ snd match
+        yield     $ callprop fn req **: k
+    req.abort 404
+
+
+#: Route on HTTP `Host` header. A handler matches iff `Host` is a non-strict
+#: subdomain of a mask. An empty string matches everything.
+#:
+#: host :: Router str
+#:
+host = *: choices -> req **: k -> next $
+  where
+    for (host, fn) in choices =>
+      if r.util.subdomain host $ req.headers.get 'Host' =>
+        yield $ callprop fn req **: k
+    req.abort 404
+
+
+#: Methods added to `Request` objects since they require fields only available in it.
+#:
+#: No parameters.
+#:
+ContextAware = subclass object where
+  #: Enter the context of a response handler named `n`.
+  #: This makes all further calls to `url_for` relative to it.
+  #:
+  #: enter :: str -> ()
+  #:
+  enter = n ~> if
+    n is None      => @handler = None
+    @handler == '' => @handler  = n
+    otherwise      => @handler += '.' + n
+
+  #: Get the URL that points to a route named `n`.
+  #: Paths that start with a dot are relative to the current context, similar
+  #: to Python relative imports.
+  #:
+  #: url_for :: str ** -> str
+  #:
+  url_for = n **: args ~> raise NotImplementedError

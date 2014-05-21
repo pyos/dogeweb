@@ -44,8 +44,8 @@ app = dogeweb.app $ r.dir
     # Normally, each argument to `r.dir` or `r.file` is a 2-tuple `(path, handler)`.
     # There is an optional second item, though, which specifies the name for this route.
     # This name can be used to generate URLs; e.g. in order to create a link
-    # to `test_route.name` (which is "/route/name/" here) one would write
-    # `request.url_for "..name"` in a template.
+    # from `test_route.parent` to `test_route.name` (which is "/route/name/" here)
+    # one would write `request.url_for "..name"` in a `test_route.parent`'s template.
     '/name/',   'name',   ~> '{}\n'.format @handler
     '/parent/', 'parent', ~> '{}\n'.format @parent
 

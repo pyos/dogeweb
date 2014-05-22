@@ -21,11 +21,15 @@ app = dogeweb.app $ r.dir
   #
   '/request/', r.file
     # `r.file` routes between subpaths relative to the current module.
-    # It does not support wildcards for now; that'll be available soon.
     '/method/',   ~> '{}\n'.format @method
     '/path/',     ~> '{}\n'.format @path
+    # Paths may contain wildcards; `<str:something>`, for example, would
+    # match any string that does not contain slashes and pass it as a keyword
+    # argument "something" to the handler. See `dogeweb.route.wildcards` for available
+    # types.
+    '/attr/<str:name>/', name ~> '{}\n'.format $ getattr self name None
+    # `r.method` is another router; it should be rather straightforward.
     '/payload/', r.method
-      # `r.method` is rather straightforward.
       'GET',  ~> 'POST something here.\n'
       'POST', ~> '{}\n'.format @payload
 

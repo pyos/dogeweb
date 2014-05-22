@@ -1,4 +1,5 @@
 import '/re'
+import '/itertools'
 
 
 #: Concatenate the result of calling two functions with the same arguments.
@@ -19,15 +20,43 @@ callprop = f *: a **: kw -> if
   otherwise     => f      *: a **: kw
 
 
+#: The wild cards available for use in path routes. The first item
+#: is the regex to use; the second is a function that parses the result.
+#:
+#: wildcards :: dict str (str, (str -> object))
+#:
+wildcards = dict'
+  'str',  ('[^/]+', str)
+  'path', ('.+',    str)
+  'int',  ('\d+',   int)
+
+
 #: Given a path route, convert it into a regex that only matches appropriate requests.
 #: Constructs of form `<type:name>` are converted into named groups; the exact contents
-#: of these groups are determined by `wildcards`.
+#: of these groups are determined by `wildcards`. The other returned object
+#: is a dict that maps field names to functions that parse their contents.
 #:
-#: pathregex :: str -> Regex
+#: pathregex :: str -> (dict str (str -> object), Regex)
 #:
 pathregex = path ->
-  # Not Implemented
-  re.compile $ re.escape path
+  fnmap = dict!
+  cards = re.split r'<([\w_]+):([\w_]+)>' path
+  # For some reason, a regex match is flattened into the list returned by `cards`
+  # instead of staying a tuple. Ugh.
+  plain = cards !! slice 0 None 3
+  types = cards !! slice 1 None 3
+  names = cards !! slice 2 None 3
+
+  onwildcard = wcid name -> if
+    name in fnmap     => raise $ ValueError $ '{!r} contains repeating names'.format path
+    wcid in wildcards =>
+      fnmap !! name = wildcards !! wcid !! 1
+      '(?P<{}>{})'.format name $ wildcards !! wcid !! 0
+    otherwise => raise $ ValueError $ 'wildcard type {!r} not supported'.format wcid
+
+  fnmap, re.compile $ ''.join $ map ''.join $ itertools.zip_longest fillvalue: ''
+    map re.escape  plain
+    map onwildcard types names
 
 
 #: Given a function that decides between multiple routes based on the requested path,
@@ -44,7 +73,7 @@ pathregex = path ->
 #:      to the former. (e.g. if there's a route for `/something/`, `/something`
 #:      would redirect there.)
 #:
-#: pathrouter :: (Router Regex) (Optional bool) -> Router str
+#: pathrouter :: (Router (dict str (str -> object), Regex)) (Optional bool) -> Router str
 #:
 pathrouter = f no_bare: False -> *: xs ->
   routemap = dict!
@@ -74,10 +103,11 @@ pathrouter = f no_bare: False -> *: xs ->
       if data == bare => yield (data_re, h)
          otherwise    =>
            yield (data_re, h)
-           yield (bare_re, req -> req.redirect $ req.fullpath + '/')
+           yield (bare_re, **: _ ~> @redirect $ @fullpath + '/')
   router.routemap = routemap
   router.routerev = routerev
   router
+
 
 #: Check whether a requested `Host` is a subdomain of another.
 #:
@@ -85,19 +115,25 @@ pathrouter = f no_bare: False -> *: xs ->
 #:
 _issubdomainof = host mask -> mask == host or host.endswith ('.' + mask)
 
+
 #: Check whether a path is a subpath of another one. Return the length
 #: of the matched component and a dictionary of groups.
 #:
-#: _issubpathof :: str Regex -> Maybe (str, dict str str)
+#: _issubpathof :: str (dict str (str -> object), Regex) -> Maybe (int, dict str object)
 #:
-_issubpathof = path regex -> (m = regex.match path) => (m.end! - 1, m.groupdict!)
+_issubpathof = path (fns, regex) -> (m = regex.match path) => m.end! - 1, dict
+  where for (name, value) in m.groupdict!.items! =>
+    yield (name, (fns !! name) value)
+
 
 #: Check whether a path matches the route exactly. Return value is the same
 #: as for `_issubpathof`.
 #:
-#: _issameas :: str Regex -> Maybe (str, dict str str)
+#: _issameas :: str (dict str (str -> object), Regex) -> Maybe (int, dict str object)
 #:
-_issameas = path regex -> (m = regex.match path) and m.end! == len path => (path, m.groupdict!)
+_issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path => m.end!,
+  where for (name, value) in m.groupdict!.items! =>
+    yield (name, (fns !! name) value)
 
 
 #: Route on HTTP method. Method names are uppercase.

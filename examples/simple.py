@@ -17,7 +17,8 @@ app = dogeweb.app(r.dir(
     ('/path/',     lambda req: '{}\n'.format(req.path)),
     ('/payload/', r.method(
       ('GET',  lambda req: 'POST something here.\n'),
-      ('POST', lambda req: '{}\n'.format(req.payload)))))),
+      ('POST', lambda req: '{}\n'.format(req.payload)))),
+    ('/attr/<str:name>/', lambda req, name: '{}\n'.format(getattr(req, name, None))))),
   ('/static/', lambda req: req.static(req.path.lstrip('/'))),
 
   ('/route/', 'test_route', r.file(

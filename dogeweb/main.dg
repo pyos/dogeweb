@@ -6,7 +6,6 @@ import '/aiohttp/server'   qualified
 import '/aiohttp/parsers'  qualified
 import '/aiohttp/protocol' qualified
 
-import 'tools'
 import 'request'
 import 'response'
 import 'response/Abort'
@@ -14,9 +13,9 @@ import 'response/Abort'
 
 #: The default error handler. Do not use it. EVER.
 #:
-#: _safe_error :: Request Abort -> Response
+#: _safe_error :: Request Abort -> coroutine Response
 #:
-_safe_error = tools.async $ err ~>
+_safe_error = asyncio.coroutine $ err ~>
   if err.code == 500 =>
     # TODO actual logging?
     print '------------ FIX THIS.'
@@ -41,7 +40,7 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
   #:
   #: handle_request :: RawRequestMessage DataQueue -> coroutine a
   #:
-  handle_request = tools.async $ message payload ~>
+  handle_request = asyncio.coroutine $ message payload ~>
     data = b''
     while True => except
       err         => chunk = yield from payload.read!

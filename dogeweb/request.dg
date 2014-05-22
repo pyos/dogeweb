@@ -34,7 +34,6 @@ Request = subclass route.ContextAware response.ContextAware where
     # To route between subpaths, `r.dir` will slice parts off `path`
     # and append them to this string instead.
     @parent  = ''
-    @handler = ''
     None
 
   fullpath = ~> @parent + @path

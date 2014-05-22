@@ -1,7 +1,6 @@
 import '/os'
+import '/asyncio'
 import '/mimetypes'
-
-import 'tools'
 
 
 #: Convert an arbitrary object into a response.
@@ -12,7 +11,7 @@ import 'tools'
 #:
 #: respondify :: object -> coroutine Response
 #:
-respondify = tools.async $ smth -> if
+respondify = asyncio.coroutine $ smth -> if
   smth :: Response => smth
   smth :: tuple    => Response (fst smth) dict! $ (snd smth).encode 'utf-8'
   smth :: str      => Response 200        dict! $ smth      .encode 'utf-8'
@@ -47,7 +46,7 @@ Response = subclass object where
   #:
   #: write_to :: IOBase -> coroutine a
   #:
-  write_to = tools.async $ response ~> response.write @data
+  write_to = asyncio.coroutine $ response ~> response.write @data
 
   #: Headers that are required for all responses, such as `Content-Type` and `Content-Length`.
   #:
@@ -84,7 +83,7 @@ IOResponse = subclass Response where
   #:
   #: write_to :: IOBase -> coroutine a
   #:
-  write_to = tools.async $ response ~>
+  write_to = asyncio.coroutine $ response ~>
     # TODO make this async?
     while (b = @fileobj.read @bufsize) => response.write b
 

@@ -1,5 +1,6 @@
 import '/re'
 
+
 #: Concatenate the result of calling two functions with the same arguments.
 #: Used to construct paths.
 #:
@@ -18,71 +19,85 @@ callprop = f *: a **: kw -> if
   otherwise     => f      *: a **: kw
 
 
-#: Common tools used in routing.
+#: Given a path route, convert it into a regex that only matches appropriate requests.
+#: Constructs of form `<type:name>` are converted into named groups; the exact contents
+#: of these groups are determined by `wildcards`.
 #:
-#: ???
+#: pathregex :: str -> Regex
 #:
-util = subclass object where
-  #: Given a router that accepts regular expressions that match certain
-  #: parts as groups, construct one that accepts strings where non-constant parts
-  #: are specified `<int:like_this>`. If one of the matches ends with a slash,
-  #: a redirect is created that adds that slash to the end of the URLs that lack it;
-  #: for example, if a route for `/something/` exists, `/something` will redirect there.
-  #:
-  #: pathrouter :: Router Regex -> Router str
-  #:
-  pathrouter = f no_bare: False -> *: xs ->
-    routemap = dict!
-    routerev = dict!
-    router   = f routerev: routerev *:
-      where for q in xs =>
-        data, name, h = if
-          len q > 2 => q !! 0, q !! 1, q !! 2
-          otherwise => q !! 0, None,   q !! 1
-        name = name or getattr h '__name__' None
+pathregex = path ->
+  # Not Implemented
+  re.compile $ re.escape path
 
-        data = re.sub r'/+' '/' data
-        bare = '/' + data.strip '/'
 
-        if data == bare and bare != '/' and no_bare =>
-          raise $ ValueError $ '{!r} must end with a slash'.format data
+#: Given a function that decides between multiple routes based on the requested path,
+#: create one that
+#:
+#:   1. Allows for wildcards in these paths; e.g. `/<str:board>/<int:post>/`
+#:      would match both `/b/1/` and `/s/100/`.
+#:
+#:   2. Allows for route names; in addition to `(path, handler)` tuples, it can accept
+#:      `(path, name, handler)` tuples. These names could then be used to construct
+#:      an URL without hardcoding the routes themselves.
+#:
+#:   3. For each route that ends with a slash creates one that does not, but redirects
+#:      to the former. (e.g. if there's a route for `/something/`, `/something`
+#:      would redirect there.)
+#:
+#: pathrouter :: (Router Regex) (Optional bool) -> Router str
+#:
+pathrouter = f no_bare: False -> *: xs ->
+  routemap = dict!
+  routerev = dict!
+  router   = f routerev: routerev *:
+    where for q in xs =>
+      data, name, h = if
+        len q > 2 => q !! 0, q !! 1, q !! 2
+        otherwise => q !! 0, None,   q !! 1
+      name = name or getattr h '__name__' None
 
-        # TODO do something different.
-        data_re = re.compile $ re.escape data
-        bare_re = re.compile $ re.escape bare
-        name =>
-          routemap !! name = (data -> **: k -> data) data
-          routerev !! h    = name
-          hasattr h 'routemap' => for (r, v) in h.routemap.items! =>
-            routemap !! (name + '.' + r) = concatfs (routemap !! name) v
+      data = re.sub r'/+' '/' data
+      bare = '/' + data.strip '/'
 
-        if data == bare => yield (data_re, h)
-           otherwise    =>
-             yield (data_re, h)
-             yield (bare_re, req -> req.redirect $ req.fullpath + '/')
-    router.routemap = routemap
-    router.routerev = routerev
-    router
+      if data == bare and bare != '/' and no_bare =>
+        raise $ ValueError $ '{!r} must end with a slash'.format data
 
-  #: Check whether a requested `Host` is a subdomain of another.
-  #:
-  #: subdomain :: str str -> bool
-  #:
-  subdomain = mask host -> mask == host or host.endswith ('.' + mask)
+      name =>
+        routemap !! name = (data -> **: k -> data) data
+        routerev !! h    = name
+        hasattr h 'routemap' => for (r, v) in h.routemap.items! =>
+          routemap !! (name + '.' + r) = concatfs (routemap !! name) v
 
-  #: Check whether a path is a subpath of another one. Return the length
-  #: of the matched component and a dictionary of groups.
-  #:
-  #: startswith :: Regex str -> Maybe (str, dict str str)
-  #:
-  startswith = regex path -> (m = regex.match path) => (m.end! - 1, m.groupdict!)
+      data_re = pathregex data
+      bare_re = pathregex bare
 
-  #: Check whether a path matches the route exactly. Return value is the same
-  #: as for `startswith`.
-  #:
-  #: strict :: Regex str -> Maybe (str, dict str str)
-  #:
-  strict = regex path -> (m = regex.match path) and m.end! == len path => (path, m.groupdict!)
+      if data == bare => yield (data_re, h)
+         otherwise    =>
+           yield (data_re, h)
+           yield (bare_re, req -> req.redirect $ req.fullpath + '/')
+  router.routemap = routemap
+  router.routerev = routerev
+  router
+
+#: Check whether a requested `Host` is a subdomain of another.
+#:
+#: _issubdomainof :: str str -> bool
+#:
+_issubdomainof = host mask -> mask == host or host.endswith ('.' + mask)
+
+#: Check whether a path is a subpath of another one. Return the length
+#: of the matched component and a dictionary of groups.
+#:
+#: _issubpathof :: str Regex -> Maybe (str, dict str str)
+#:
+_issubpathof = path regex -> (m = regex.match path) => (m.end! - 1, m.groupdict!)
+
+#: Check whether a path matches the route exactly. Return value is the same
+#: as for `_issubpathof`.
+#:
+#: _issameas :: str Regex -> Maybe (str, dict str str)
+#:
+_issameas = path regex -> (m = regex.match path) and m.end! == len path => (path, m.groupdict!)
 
 
 #: Route on HTTP method. Method names are uppercase.
@@ -103,13 +118,12 @@ method = *: choices -> req **: k -> next $
 #:
 #: file :: Router str
 #:
-file = util.pathrouter $ *: choices routerev -> req **: k -> next $
+file = pathrouter $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
-      if (match = util.strict path req.path) =>
-        req.enter $ routerev.get fn
-        k.update  $ snd match
-        yield     $ callprop fn req **: k
+      if (match = req.path `_issameas` path) =>
+        k.update $ snd match
+        yield    $ callprop fn req **: k
     req.abort 404
 
 
@@ -126,15 +140,14 @@ file = util.pathrouter $ *: choices routerev -> req **: k -> next $
 #:
 #: dir :: Router str
 #:
-dir = util.pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
+dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
-      if (match = util.startswith path req.path) =>
+      if (match = req.path `_issubpathof` path) =>
         req.parent += req.path !! slice None (fst match)
         req.path    = req.path !! slice (fst match) None
-        req.enter $ routerev.get fn
-        k.update  $ snd match
-        yield     $ callprop fn req **: k
+        k.update $ snd match
+        yield    $ callprop fn req **: k
     req.abort 404
 
 
@@ -146,7 +159,7 @@ dir = util.pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
 host = *: choices -> req **: k -> next $
   where
     for (host, fn) in choices =>
-      if r.util.subdomain host $ req.headers.get 'Host' =>
+      if req.headers.get 'Host' `_issubdomainof` host =>
         yield $ callprop fn req **: k
     req.abort 404
 
@@ -156,15 +169,11 @@ host = *: choices -> req **: k -> next $
 #: No parameters.
 #:
 ContextAware = subclass object where
-  #: Enter the context of a response handler named `n`.
-  #: This makes all further calls to `url_for` relative to it.
+  #: The name of the route this request was handed down to.
   #:
-  #: enter :: str -> ()
+  #: handler :: str
   #:
-  enter = n ~> if
-    n is None      => @handler = None
-    @handler == '' => @handler  = n
-    otherwise      => @handler += '.' + n
+  handler = ~> raise NotImplementedError
 
   #: Get the URL that points to a route named `n`.
   #: Paths that start with a dot are relative to the current context, similar

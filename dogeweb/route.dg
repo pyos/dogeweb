@@ -2,14 +2,6 @@ import '/re'
 import '/itertools'
 
 
-#: Concatenate the result of calling two functions with the same arguments.
-#: Used to construct paths.
-#:
-#: concatfs :: (**a -> str) (**a -> str) -> **a -> str
-#:
-concatfs = f g -> **: k -> f **: k + g **: k
-
-
 #: Call a function if it is indeed a function; if it's actually a property,
 #: call its `fget` method. Allows to use `~> methods` as routes.
 #:
@@ -18,6 +10,13 @@ concatfs = f g -> **: k -> f **: k + g **: k
 callprop = f *: a **: kw -> if
   f :: property => f.fget *: a **: kw
   otherwise     => f      *: a **: kw
+
+
+#: Syntax for wildcards.
+#:
+#: WILDCARDRE :: Regex
+#:
+WILDCARDRE = re.compile r'<([\w_]+):([\w_]+)>'
 
 
 #: The wild cards available for use in path routes. The first item
@@ -40,7 +39,7 @@ wildcards = dict'
 #:
 pathregex = path ->
   fnmap = dict!
-  cards = re.split r'<([\w_]+):([\w_]+)>' path
+  cards = WILDCARDRE.split path
   # For some reason, a regex match is flattened into the list returned by `cards`
   # instead of staying a tuple. Ugh.
   plain = cards !! slice 0 None 3
@@ -57,6 +56,13 @@ pathregex = path ->
   fnmap, re.compile $ ''.join $ map ''.join $ itertools.zip_longest fillvalue: ''
     map re.escape  plain
     map onwildcard types names
+
+
+#: Substitute values for wildcards in a path.
+#:
+#: concrete :: (dict str object) str -> str
+#:
+concrete = args path -> WILDCARDRE.sub (m -> str $ args !! m.group 2) path
 
 
 #: Given a function that decides between multiple routes based on the requested path,
@@ -92,10 +98,8 @@ pathrouter = f no_bare: False -> *: xs ->
         raise $ ValueError $ '{!r} must end with a slash'.format data
 
       name =>
-        routemap !! name = (data -> **: k -> data) data
+        routemap !! name = data, h
         routerev !! h    = name
-        hasattr h 'routemap' => for (r, v) in h.routemap.items! =>
-          routemap !! (name + '.' + r) = concatfs (routemap !! name) v
 
       data_re = pathregex data
       bare_re = pathregex bare
@@ -180,8 +184,10 @@ dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
-        req.parent += req.path !! slice None (fst match)
-        req.path    = req.path !! slice (fst match) None
+        req.modroute.append fn
+        req.modname .append $ routerev !! fn
+        req.modpath .append $ req.path !! slice None (fst match)
+        req.path            = req.path !! slice (fst match) None
         k.update $ snd match
         yield    $ callprop fn req **: k
     req.abort 404
@@ -200,16 +206,30 @@ host = *: choices -> req **: k -> next $
     req.abort 404
 
 
-#: Methods added to `Request` objects since they require fields only available in it.
-#:
-#: No parameters.
-#:
 ContextAware = subclass object where
-  #: The name of the route this request was handed down to.
+  #: Methods added to `Request` objects since they require fields only available in it.
   #:
-  #: handler :: str
+  #: modpath  :: [str]     -- parts of `path` sliced off by `dir`.
+  #: modroute :: [Handler] -- functions that correspond to these parts.
+  #: modname  :: [str]     -- names of these functions.
   #:
-  handler = ~> raise NotImplementedError
+  __init__ = *: a **: k ~>
+    @modpath  = list!
+    @modroute = list!
+    @modname  = list!
+    (super ContextAware self).__init__ *: a **: k
+
+  #: The requested path relative to `/`, not the current module.
+  #:
+  #: fullpath :: str
+  #:
+  fullpath = ~> @parent + @path
+
+  #: Path to the current module.
+  #:
+  #: parent :: str
+  #:
+  parent = ~> ''.join @modpath
 
   #: Get the URL that points to a route named `n`.
   #: Paths that start with a dot are relative to the current context, similar
@@ -217,4 +237,23 @@ ContextAware = subclass object where
   #:
   #: url_for :: str ** -> str
   #:
-  url_for = n **: args ~> raise NotImplementedError
+  url_for = name **: args ~>
+    parent = 0
+    while name.startswith '.' =>
+      name  !!= slice 1 None
+      parent += 1
+
+    xs = list $ zip @modpath @modroute
+    # This allows absolute references, e.g. `url_for "static"`.
+    xs.insert 0 ('', @handler)
+    # On absolute imports, leave the root handler only.
+    # On relative imports, leave everything but the last `parent - 1` entries.
+    xs !!= slice None (1 - parent or None)
+    not xs => raise $ ValueError 'relative import out of bounds'
+
+    fn = xs !! -1 !! 1
+    for n in name.split '.' =>
+      not $ hasattr fn 'routemap' => raise $ TypeError 'module does not support namespacing'
+      not $ n in fn.routemap      => raise $ ValueError $ 'route {!r} does not exist'.format n
+      xs.append (path, fn = fn.routemap !! n)
+    concrete args $ ''.join $ map fst xs

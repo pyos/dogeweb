@@ -47,11 +47,14 @@ app = dogeweb.app $ r.dir
   '/route/', 'test_route', r.file
     # Normally, each argument to `r.dir` or `r.file` is a 2-tuple `(path, handler)`.
     # There is an optional second item, though, which specifies the name for this route.
-    # This name can be used to generate URLs; e.g. in order to create a link
-    # from `test_route.parent` to `test_route.name` (which is "/route/name/" here)
-    # one would write `request.url_for "..name"` in a `test_route.parent`'s template.
-    '/name/',   'name',   ~> '{}\n'.format @handler
     '/parent/', 'parent', ~> '{}\n'.format @parent
+    # This name can be used to generate URLs; e.g. in order to create a link
+    # from `test_route.redirect` to `test_route.parent` (which is "/route/parent/" here)
+    # one would write `request.url_for ".parent"` instead of hardcoding the URL:
+    '/redirect/', 'redirect', ~> @redirect $ @url_for '.parent'
+    # Keyword arguments to `url_for` specify the values to substitute for wildcards.
+    '/<int:id>/', 'something', id ~> 'Got item #{}.\n'.format id
+    '/first/',    'to_id_1',      ~> @redirect $ @url_for '.something' id: 1
 
   '/', r.file
     '/',             ~> somepage

@@ -22,8 +22,10 @@ app = dogeweb.app(r.dir(
   ('/static/', lambda req: req.static(req.path.lstrip('/'))),
 
   ('/route/', 'test_route', r.file(
-    ('/name/',   'name',   lambda req: '{}\n'.format(req.handler)),
-    ('/parent/', 'parent', lambda req: '{}\n'.format(req.parent)))),
+    ('/parent/',   'parent',    lambda req: '{}\n'.format(req.parent)),
+    ('/redirect/', 'redirect',  lambda req: req.redirect(req.url_for('.parent'))),
+    ('/<int:id>/', 'something', lambda req, id: 'Got item #{}.\n'.format(id)),
+    ('/first/',    'to_id_1',   lambda req: req.redirect(req.url_for('.something', id=1))))),
 
   ('/', r.file(
     ('/',             lambda req: somepage),

@@ -47,7 +47,7 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
       err is None => data += chunk
       err :: aiohttp.EofStream => break!
 
-    req   = request.Request message data
+    req   = request.Request message data @handler
     resp1 = except
       outer => except
         # Layer 1. Call into the default handler.

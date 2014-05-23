@@ -23,7 +23,7 @@ parse_encoding = data ->
 
 
 Request = subclass route.ContextAware response.ContextAware where
-  __init__ = raw payload ~>
+  __init__ = raw payload handler ~>
     @method      = raw.method
     @path        = raw.path
     @version     = raw.version
@@ -31,12 +31,9 @@ Request = subclass route.ContextAware response.ContextAware where
     @compression = raw.compression
     @shouldclose = raw.should_close
     @payload     = payload
-    # To route between subpaths, `r.dir` will slice parts off `path`
-    # and append them to this string instead.
-    @parent  = ''
-    None
+    @handler     = handler
+    (super Request self).__init__!
 
-  fullpath = ~> @parent + @path
   accept   = ~> raise NotImplementedError
   encoding = ~> raise NotImplementedError
   form     = ~> raise NotImplementedError

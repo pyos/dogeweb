@@ -185,7 +185,7 @@ dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
         req.modroute.append fn
-        req.modname .append $ routerev !! fn
+        req.modname .append $ routerev.get fn None
         req.modpath .append $ req.path !! slice None (fst match)
         req.path            = req.path !! slice (fst match) None
         k.update $ snd match

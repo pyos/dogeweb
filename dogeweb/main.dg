@@ -1,6 +1,8 @@
 import '/traceback'
 
 import '/asyncio'
+import '/asyncio/CancelledError'
+
 import '/aiohttp'
 import '/aiohttp/server'   qualified
 import '/aiohttp/parsers'  qualified
@@ -52,9 +54,11 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
       outer => except
         # Layer 1. Call into the default handler.
         inner => yield from $ response.responsify $ @handler req
-        inner :: Abort     => raise inner
-        inner :: Exception => req.abort 500  # `inner` is stored as `__context__`.
-      outer :: Abort => except
+        inner :: Abort          => raise inner
+        inner :: CancelledError => raise inner
+        inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.
+      outer :: CancelledError => raise outer
+      outer :: Abort          => except
         middle => except
           # Layer 2. The default handler failed or raised an HTTP error.
           #          Call into the error handler.

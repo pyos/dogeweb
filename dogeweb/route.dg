@@ -140,6 +140,16 @@ _issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path =
     yield (name, (fns !! name) value)
 
 
+#: Route on HTTP `Accept`.
+#:
+#: accept :: Router str
+#:
+accept = *: choices -> req **: k ->
+  xs = map ((i, (x, h)) -> (req.accept.mime !! x, -i, h)) $ enumerate choices
+  fn = max xs !! 2
+  callprop fn req **: k
+
+
 #: Route on HTTP method. Method names are uppercase.
 #: `HEAD` is routed to `GET` unless redefined.
 #:

@@ -51,14 +51,14 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
     resp1 = except
       outer => except
         # Layer 1. Call into the default handler.
-        inner => yield from $ response.respondify $ @handler req
+        inner => yield from $ response.responsify $ @handler req
         inner :: Abort     => raise inner
         inner :: Exception => req.abort 500  # `inner` is stored as `__context__`.
       outer :: Abort => except
         middle => except
           # Layer 2. The default handler failed or raised an HTTP error.
           #          Call into the error handler.
-          inner => yield from $ response.respondify $ @onerror req outer
+          inner => yield from $ response.responsify $ @onerror req outer
           inner :: Abort     => raise inner
           inner :: Exception => req.abort 500
         middle :: Abort =>

@@ -1,4 +1,5 @@
 import '/os'
+import '/json'
 import '/asyncio'
 import '/mimetypes'
 
@@ -6,16 +7,27 @@ import '/mimetypes'
 #: Convert an arbitrary object into a response.
 #:
 #: Currently supported are strings (simple HTML responses in UTF-8),
-#: `(code, string)` tuples and actual `Response`s, as well as coroutines
+#: actual `Response`s, and `(code, responsifyable)` tuples, as well as coroutines
 #: that return them.
 #:
-#: respondify :: object -> coroutine Response
+#: responsify :: object -> coroutine Response
 #:
-respondify = asyncio.coroutine $ smth -> if
+responsify = asyncio.coroutine $ smth -> if
   smth :: Response => smth
-  smth :: tuple    => Response (fst smth) dict! $ (snd smth).encode 'utf-8'
-  smth :: str      => Response 200        dict! $ smth      .encode 'utf-8'
-  otherwise        => yield from $ respondify $ yield from smth
+  smth :: str      => Response 200 dict! $ smth.encode 'utf-8'
+  smth :: tuple    => r where
+    r = responsify $ snd smth
+    r.code = fst smth
+  otherwise        => yield from $ responsify $ yield from smth
+
+
+#: Create a json response. Unlike `json.dumps`, this specifies proper `Content-Type`.
+#:
+#: jsonify :: object -> Response
+#:
+jsonify = smth -> Response 200
+  dict' ('Content-Type', 'application/json; charset=utf-8')
+  (json.dumps smth).encode 'utf-8'
 
 
 Abort = subclass Exception where

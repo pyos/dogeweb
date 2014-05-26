@@ -1,0 +1,51 @@
+import '/os'
+import '/itertools'
+import '/collections'
+
+import '/aiohttp'
+import '/aiohttp/websocket'
+
+import '/dogeweb'
+import '/dogeweb/r'
+
+
+# You may want to use ZeroMQ or something for broadcasting.
+clients = collections.defaultdict itertools.count!.__next__
+
+
+app = dogeweb.app $ r.file
+  '/', r.upgrade
+    # `r.upgrade` routes between protocols.
+    # If the client does not want to change protocols, it will use `http`.
+    'http', ~> @static attachment: False $ os.path.join (os.path.dirname __file__) 'websocket.html'
+
+    # `request.websocket handler` returns a `Response` that initiates
+    # a websocket handshake and calls into the handler when done.
+    'websocket', ~> @websocket $ input output ->
+      # `output` has four methods:
+      #   * `ping` requests a `pong`;
+      #   * `pong` responds to a `ping`;
+      #   * `close` gracefully ends the connection;
+      #   * `send` transfers some binary data.
+      id = clients !! output
+      for w in clients => w.send $ ('S {} connected'.format id).encode!
+
+      while True =>
+        # We'll make a simple websocket chat.
+        msg = except
+          # The input queue has only one useful method, `read`.
+          # It's a coroutine that returns the next message.
+          err => yield from input.read!
+          # It raises `aiohttp.EofStream` on disconnect.
+          err :: aiohttp.EofStream => break!
+
+        if msg.tp == websocket.MSG_PING  => output.pong!
+           msg.tp == websocket.MSG_CLOSE => break!
+           msg.tp == websocket.MSG_TEXT  =>
+             for w in clients => w.send $ ('M {} {}'.format id msg.data.strip!).encode!
+
+      clients !!~ output
+      for w in clients => w.send $ ('S {} disconnected'.format id).encode!
+
+
+app.run '0.0.0.0' 8000

@@ -43,13 +43,16 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
   #: handle_request :: RawRequestMessage DataQueue -> coroutine a
   #:
   handle_request = asyncio.coroutine $ message payload ~>
+    proto = 'http'
+    for (k, v) in message.headers => if k == 'UPGRADE' => proto = v
+
     data = b''
-    while True => except
+    while proto == 'http' => except
       err         => chunk = yield from payload.read!
       err is None => data += chunk
       err :: aiohttp.EofStream => break!
 
-    req   = request.Request message data @handler
+    req   = request.Request message data self @handler
     resp1 = except
       outer => except
         # Layer 1. Call into the default handler.

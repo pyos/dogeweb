@@ -28,22 +28,21 @@ _mcache = func -> if
 Request = subclass route.ContextAware response.ContextAware where
   #: Incoming request data.
   #:
-  #: version :: str     -- the HTTP version this request was made with.
-  #: method  :: str     -- the HTTP request method (`GET`, `POST`, ...)
-  #: path    :: str     -- the requested path relative to the current routing module.
-  #: headers :: Headers -- additional HTTP headers as a dict-like object.
-  #: payload :: bytes   -- the request body.
-  #: handler :: Handler -- the root handler of the application this request was received by.
+  #: version  :: str      -- the HTTP version this request was made with.
+  #: method   :: str      -- the HTTP request method (`GET`, `POST`, ...)
+  #: path     :: str      -- the requested path relative to the current routing module.
+  #: headers  :: Headers  -- additional HTTP headers as a dict-like object.
+  #: payload  :: bytes    -- the request body.
+  #: protocol :: Protocol -- the asyncio HTTP protocol that received the response.
+  #: handler  :: Handler  -- the root handler of the application this request was received by.
   #:
-  __init__ = raw payload handler ~>
+  __init__ = raw @payload @protocol @handler ~>
     @version     = raw.version
     @method      = raw.method
     @path        = raw.path
     @headers     = Headers raw.headers
     @compression = raw.compression
     @shouldclose = raw.should_close
-    @payload     = payload
-    @handler     = handler
     (super Request self).__init__!
 
   #: Values of various `Accept-*` HTTP headers as dict-like objects.

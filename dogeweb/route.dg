@@ -140,6 +140,17 @@ _issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path =
     yield (name, (fns !! name) value)
 
 
+#: Allow upgrading to different protocols. Implements HTTP `Upgrade`.
+#:
+#: upgrade :: Router str
+#:
+upgrade = *: choices -> req **: k -> next $
+  where
+    up = req.headers.get 'Upgrade' 'http'
+    for (protocol, fn) in choices => if protocol == up => yield $ callprop fn req **: k
+    req.abort 505
+
+
 #: Route on HTTP `Accept`.
 #:
 #: accept :: Router str

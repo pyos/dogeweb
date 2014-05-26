@@ -3,6 +3,9 @@ import '/json'
 import '/asyncio'
 import '/mimetypes'
 
+import '/werkzeug/http'
+import '/werkzeug/datastructures/Headers'
+
 
 #: Convert an arbitrary object into a response.
 #:
@@ -15,10 +18,11 @@ import '/mimetypes'
 responsify = asyncio.coroutine $ smth -> if
   smth :: Response => smth
   smth :: str      => Response 200 dict! $ smth.encode 'utf-8'
-  smth :: tuple    => r where
-    r = responsify $ snd smth
+  smth :: tuple    =>
+    r = yield from $ responsify $ snd smth
     r.code = fst smth
-  otherwise        => yield from $ responsify $ yield from smth
+    r
+  otherwise => yield from $ responsify $ yield from smth
 
 
 #: Create a json response. Unlike `json.dumps`, this specifies proper `Content-Type`.
@@ -46,6 +50,8 @@ Response = subclass object where
     @data    = data
     @headers = @defheaders
     @headers.update headers
+    # Now that the overrides are in place, we can create a multi-dict.
+    @headers = Headers @headers
     None
 
   #: Release all resources attached to this response.

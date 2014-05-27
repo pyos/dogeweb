@@ -2,15 +2,13 @@ import '/os'
 import '/itertools'
 import '/collections'
 
-import '/aiohttp'
-import '/aiohttp/websocket'
-
 import '/dogeweb'
 import '/dogeweb/r'
+import '/dogeweb/websocket'
 
 
-# You may want to use ZeroMQ or something for broadcasting.
-clients = collections.defaultdict itertools.count!.__next__
+monotonic = itertools.count!
+clients   = set!
 
 
 app = dogeweb.app $ r.file
@@ -22,30 +20,31 @@ app = dogeweb.app $ r.file
     # `request.websocket handler` returns a `Response` that initiates
     # a websocket handshake and calls into the handler when done.
     'websocket', ~> @websocket $ input output ->
-      # `output` has four methods:
+      id  = next monotonic
+      idb = (str id).encode 'ascii'
+      # `output` has five methods:
       #   * `ping` requests a `pong`;
       #   * `pong` responds to a `ping`;
-      #   * `close` gracefully ends the connection;
-      #   * `send` transfers some binary data.
-      id = clients !! output
-      for w in clients => w.send $ ('S {} connected'.format id).encode!
+      #   * `close [code] [message]` gracefully ends the connection;
+      #   * `data something` transfers some binary data;
+      #   * `text something` transfers text, but you should encode it anyway.
+      for client in clients => client.text $ b'S ' + idb + b' connected'
+      clients.add output
 
-      while True =>
-        # We'll make a simple websocket chat.
+      for f in input =>
         msg = except
-          # The input queue has only one useful method, `read`.
-          # It's a coroutine that returns the next message.
-          err => yield from input.read!
-          # It raises `aiohttp.EofStream` on disconnect.
-          err :: aiohttp.EofStream => break!
+          # The input queue is an iterator of coroutines that return the next frame.
+          err => yield from f
+          err :: GeneratorExit   => break!  # The client has disconnected.
+          err :: websocket.Error => break!  # A corrupt frame was received.
 
-        if msg.tp == websocket.MSG_PING  => output.pong!
-           msg.tp == websocket.MSG_CLOSE => break!
-           msg.tp == websocket.MSG_TEXT  =>
-             for w in clients => w.send $ ('M {} {}'.format id msg.data.strip!).encode!
+        # A message is a bytestring with additional attributes `tp` (the opcode),
+        # `is_text`, `is_data`, `is_ping`, and `is_pong`. (Pings are handled automatically.)
+        if msg.is_text => for w in clients => w.text $ b'M ' + idb + b' ' + msg
+           msg.is_data => for w in clients => w.data $ b'M ' + idb + b' ' + msg
 
-      clients !!~ output
-      for w in clients => w.send $ ('S {} disconnected'.format id).encode!
+      clients.remove output
+      for client in clients => client.text $ b'S ' + idb + b' disconnected'
 
 
 app.run '0.0.0.0' 8000

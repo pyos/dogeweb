@@ -1,0 +1,174 @@
+# Because `aiohttp.websocket` handles text awfully.
+import '/base64'
+import '/hashlib'
+import '/itertools'
+
+import '/asyncio'
+import '/aiohttp'
+
+import 'response'
+
+
+Error = subclass Exception where
+GUID  = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+CONT  = 0x0
+TEXT  = 0x1
+DATA  = 0x2
+CLOSE = 0x8
+PING  = 0x9
+PONG  = 0xa
+!=?   = a b -> a.lower!.strip! != b.lower!.strip!
+
+
+#: ???
+#:
+#: parse :: DataQueue AsyncIOBase -> coroutine NoneType
+#:
+parse = asyncio.coroutine $ buf ~> while True =>
+  fin, code, *data = yield from $ parse_frame buf
+
+  while not fin =>
+    fin, cont, part = yield from $ parse_frame buf
+    cont != CONT => raise $ Error 'unexpected opcode in continuation frame'
+    data.append part
+  data = b''.join data
+
+  @feed_data $ if
+    code != CLOSE => Message code data None
+    otherwise     =>
+      code = data !! slice None 2
+      rest = data !! slice 2 None
+      Message code rest (int.from_bytes code 'big')
+
+
+#: ???
+#:
+#: parse_frame :: AsyncIOBase -> coroutine (int, int, bytes)
+#:
+parse_frame = asyncio.coroutine $ buf ->
+  head = yield from $ buf.read 2
+  head = int.from_bytes head 'big'
+
+  # fin -- 0 if more frames from the same message follow.
+  # rsv -- reserved fields, must be 0.
+  fin    = (head & 0x8000) >> 15
+  rsv    = (head & 0x7000) >> 12
+  code   = (head & 0x0F00) >> 8
+  masked = (head & 0x0080) >> 7
+  length = (head & 0x007F)
+
+  rsv => raise $ Error 'non-zero reserved value'
+  code > 0x7 and not fin      => raise $ Error => 'fragmented control frame'
+  code > 0x7 and length > 125 => raise $ Error => 'control frame payload length invalid'
+
+  length = if
+    length == 126 => int.from_bytes (yield from $ buf.read 2) 'big'
+    length == 127 => int.from_bytes (yield from $ buf.read 8) 'big'
+    otherwise     => length
+
+  mask = itertools.cycle $ if
+    masked    => yield from $ buf.read 4
+    otherwise => 0, 0, 0, 0
+
+  fin, code, bytes $ map (^) mask $ if
+    length    => yield from $ buf.read length
+    otherwise => b''
+
+
+Message = subclass bytes where
+  __new__ = tp data extra ~>
+    self = bytes.__new__ self data
+    self.tp = tp
+    self.extra = extra
+    self
+
+  is_ping  = ~> @tp == PING
+  is_pong  = ~> @tp == PONG
+  is_data  = ~> @tp == DATA
+  is_text  = ~> @tp == TEXT
+  is_close = ~> @tp == CLOSE
+
+
+Reader = subclass object where
+  __init__ = self @queue @writer ->
+  __iter__ = self -> self
+  __next__ = self -> @_read!
+  _read = asyncio.coroutine $ self -> while True =>
+    msg = except
+      err => yield from @queue.read!
+      err :: aiohttp.EofStream => raise $ GeneratorExit $ Message CLOSE b'' -1
+    if msg.is_ping  => @writer.pong
+       msg.is_close => raise $ GeneratorExit msg
+       otherwise    => raise $ StopIteration msg
+
+
+Writer = subclass object where
+  __init__ = @transport ~>
+  _head    = code ln   ~> bytes (((code != CONT) << 7) | code, ln)
+  _frame   = code data ~> if
+    len data < 126         => @transport.write $ @_head code (len data) + data
+    len data < 0x10000     => @transport.write $ @_head code 126 + length.to_bytes 2 'big' + data
+    len data < 0x100000000 => @transport.write $ @_head code 127 + length.to_bytes 8 'big' + data
+    otherwise =>
+      @_frame code $ data !! slice None (1 << 63)
+      @_frame CONT $ data !! slice (1 << 63) None
+
+  ping  = data ~> @_frame PING data
+  pong  = data ~> @_frame PONG data
+  text  = data ~> @_frame TEXT data
+  data  = data ~> @_frame DATA data
+  close = code: 1000 data: b'' ~> @_frame CLOSE $ code.to_bytes 2 'big' + data
+
+
+Response = subclass response.Response where
+  #: A WebSocket handshake `Response`.
+  #:
+  #: key     :: str -- `Sec-WebSocket-Key` of the request.
+  #: handler :: Reader Writer -> coroutine a
+  #:
+  __init__ = key handler reader writer ~>
+    @handler = asyncio.coroutine handler
+    @reader  = reader
+    @writer  = writer
+    @key     = key
+    response.Response.__init__ self 101 dict! b''
+
+  #: WebSocket handshake headers.
+  #:
+  #: defheaders :: dict str str
+  #:
+  defheaders = ~> dict'
+    'Upgrade',           'websocket'
+    'Connection',        'upgrade'
+    'Transfer-Encoding', 'chunked'
+    'Sec-WebSocket-Accept',
+      (base64.b64encode (hashlib.sha1 $ @key.encode 'ascii' + GUID).digest!).decode 'ascii'
+
+  #: Start a WebSocket session. (Will not actually write anything.)
+  #:
+  #: write_to :: IOBase -> coroutine a
+  #:
+  write_to = _ ~> @handler @reader @writer
+
+
+ContextAware = subclass object where
+  #: Create a WebSocket from this request.
+  #:
+  #: websocket :: (-> a) -> WSResponse
+  #:
+  websocket = handler ~>
+    if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')
+       @headers.get 'Upgrade'    !=? 'websocket' => @abort 400 'This is a websocket node.'
+       @headers.get 'Connection' !=? 'upgrade'   => @abort 400 '`Connection: upgrade`?'
+
+    ver = @headers.get 'Sec-WebSocket-Version'
+    key = @headers.get 'Sec-WebSocket-Key'
+
+    if not $ ver in ('13', '8', '7') => @abort 400 'Unsupported WebSocket version.'
+       not $ (except
+         err => len (base64.b64decode key) == 16
+         err :: Exception => False) => @abort 400 'WebSocket handshake error.'
+
+    writer = Writer  @protocol.transport
+    reader = Reader (@protocol.reader.set_parser parse) writer
+    Response key handler reader writer

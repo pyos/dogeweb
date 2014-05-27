@@ -2,6 +2,7 @@ import 'main'
 import 'route'
 import 'request'
 import 'response'
+import 'websocket'
 
 
 r     = route

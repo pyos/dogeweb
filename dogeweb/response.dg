@@ -117,37 +117,6 @@ IOResponse = subclass Response where
       err :: AttributeError => 'Transfer-Encoding', 'chunked'
 
 
-WSResponse = subclass Response where
-  #: A WebSocket handshake `Response`.
-  #:
-  #: parser   :: ???
-  #: writer   :: ???
-  #: protocol :: Protocol -- the asyncio HTTP connection to use.
-  #: handler  :: DataQueue ??? -> a
-  #:          -- the function to call after establishing the connection.
-  #:          -- Its first argument is a queue of websocket messages
-  #:          -- and the second is an aiohttp websocket output stream.
-  #:
-  __init__ = code headers parser writer protocol handler ~>
-    @handler  = asyncio.coroutine handler
-    @parser   = parser
-    @writer   = writer
-    @protocol = protocol
-    Response.__init__ self code headers b''
-
-  #: WebSocket responses have no default headers.
-  #:
-  #: defheaders :: dict str str
-  #:
-  defheaders = ~> dict!
-
-  #: Start a WebSocket session. (Will not actually write anything.)
-  #:
-  #: write_to :: IOBase -> coroutine a
-  #:
-  write_to = _ ~> @handler (@protocol.reader.set_parser @parser) @writer
-
-
 #: Methods added to `Request` objects since they require fields only available in it.
 #:
 #: No parameters.
@@ -164,16 +133,6 @@ ContextAware = subclass object where
   #: redirect :: str (Optional str) -> a
   #:
   redirect = path description: '' ~> raise $ Abort 302 description $ dict' ('Location', path)
-
-  #: Create a WebSocket from this request.
-  #:
-  #: websocket :: (-> a) -> WSResponse
-  #:
-  websocket = handler ~>
-    status, headers, parser, writer = aiohttp.websocket.do_handshake @method
-      @headers.items
-      @protocol.transport
-    WSResponse status headers parser writer @protocol handler
 
   #: Serve a single static file.
   #:

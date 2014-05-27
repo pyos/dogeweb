@@ -3,6 +3,7 @@ import 'response'
 
 import 'http'
 import 'struct'
+import 'websocket'
 
 
 #: When a property is first accessed, cache the result of calling a function and return it.
@@ -22,7 +23,7 @@ _mcache = func -> if
     prop
 
 
-Request = subclass route.ContextAware response.ContextAware where
+Request = subclass route.ContextAware response.ContextAware websocket.ContextAware where
   #: Incoming request data.
   #:
   #: version  :: str      -- the HTTP version this request was made with.

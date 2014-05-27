@@ -89,6 +89,7 @@ multipart = data boundary encoding: 'utf-8' ->
   while data =>
     start  = data.find b'\r\n\r\n'
     finish = data.find sep start
+    start  < 0 => raise StopIteration
     finish < 0 => finish = len data
 
     headers = data !! slice None start

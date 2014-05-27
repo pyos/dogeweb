@@ -40,7 +40,7 @@ parse = asyncio.coroutine $ buf ~> while True =>
     otherwise     =>
       code = data !! slice None 2
       rest = data !! slice 2 None
-      Message code rest (int.from_bytes code 'big')
+      Message CLOSE rest (int.from_bytes code 'big')
 
 
 #: ???
@@ -80,7 +80,7 @@ parse_frame = asyncio.coroutine $ buf ->
 Message = subclass bytes where
   __new__ = tp data extra ~>
     self = bytes.__new__ self data
-    self.tp = tp
+    self.tp    = tp
     self.extra = extra
     self
 

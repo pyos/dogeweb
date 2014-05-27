@@ -17,6 +17,8 @@ DATA  = 0x2
 CLOSE = 0x8
 PING  = 0x9
 PONG  = 0xa
+SHORT = 0xFFFF
+LONG  = 0xFFFFFFFFFFFFFFFF
 !=?   = a b -> a.lower!.strip! != b.lower!.strip!
 
 
@@ -105,13 +107,14 @@ Reader = subclass object where
 Writer = subclass object where
   __init__ = @transport ~>
   _head    = code ln   ~> bytes (((code != CONT) << 7) | code, ln)
-  _frame   = code data ~> if
-    len data < 126         => @transport.write $ @_head code (len data) + data
-    len data < 0x10000     => @transport.write $ @_head code 126 + length.to_bytes 2 'big' + data
-    len data < 0x100000000 => @transport.write $ @_head code 127 + length.to_bytes 8 'big' + data
-    otherwise =>
-      @_frame code $ data !! slice None (1 << 63)
-      @_frame CONT $ data !! slice (1 << 63) None
+  _frame   = code data ~>
+    ln = len data
+    if ln <= 125   => @transport.write $ @_head code ln + data
+       ln <= SHORT => @transport.write $ @_head code 126 + ln.to_bytes 2 'big' + data
+       ln <= LONG  => @transport.write $ @_head code 127 + ln.to_bytes 8 'big' + data
+       otherwise =>
+         @_frame code $ data !! slice None LONG
+         @_frame CONT $ data !! slice LONG None
 
   ping  = data ~> @_frame PING data
   pong  = data ~> @_frame PONG data

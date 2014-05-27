@@ -106,4 +106,4 @@ Server = subclass object where
     loop = asyncio.get_event_loop!
     srv  = loop.run_until_complete $ loop.create_server self host port
     except err => loop.run_forever!
-           err :: KeyboardInterrupt => exit 0
+           err :: KeyboardInterrupt =>

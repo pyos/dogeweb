@@ -6,8 +6,7 @@ import '/mimetypes'
 import '/aiohttp'
 import '/aiohttp/websocket' qualified
 
-import '/werkzeug/http'
-import '/werkzeug/datastructures/Headers'
+import 'struct'
 
 
 #: Convert an arbitrary object into a response.
@@ -51,10 +50,8 @@ Response = subclass object where
     @code    = code
     @headers = headers
     @data    = data
-    @headers = @defheaders
-    @headers.update headers
-    # Now that the overrides are in place, we can create a multi-dict.
-    @headers = Headers @headers
+    @headers = struct.Headers @defheaders
+    @headers.replace headers
     None
 
   #: Release all resources attached to this response.
@@ -174,7 +171,7 @@ ContextAware = subclass object where
   #:
   websocket = handler ~>
     status, headers, parser, writer = aiohttp.websocket.do_handshake @method
-      @headers.items!
+      @headers.items
       @protocol.transport
     WSResponse status headers parser writer @protocol handler
 

@@ -1,0 +1,105 @@
+MultiDict = subclass dict where
+  #: A dictionary that can transparently store multiple values as a list.
+  #: It can be initialized either like a normal dict, except every value
+  #: is wrapped in a singleton list.
+  __init__ = init: () ~>
+    dict.__init__ self
+    @update init
+    None
+
+  #: Retrieve the first value for a given key.
+  #: Raises `KeyError` if none exists.
+  #:
+  #: !! :: (MultiDict a b) a -> b
+  #:
+  __getitem__ = k ~> dict.__getitem__ self k !! 0
+
+  #: Replace all existing values for a key with a given one.
+  #:
+  #: !!= :: (MultiDict a b) a b -> NoneType
+  #:
+  __setitem__ = k v ~> dict.__setitem__ self k $ list' v
+
+  #: Add a new value to a key.
+  #:
+  #: add :: a b -> NoneType
+  #:
+  add = k v ~> (@setdefault k list!).append v
+
+  #: Return the first value for a given key or a default if none exists.
+  #:
+  #: get :: a (Maybe b) -> Maybe b
+  #:
+  get = k default: None ~>
+    ds = list' default
+    xs = dict.get self k ds or ds
+    xs !! 0
+
+  #: Return the list of items fo a key. If that key does not exist,
+  #: return an empty list.
+  #:
+  #: getall :: a -> [b]
+  #:
+  getall = k ~> dict.get self k list!
+
+  #: Iterate over all keys/values in this dict. May yield the same key
+  #: multiple times.
+  #:
+  #: keys   :: iter a
+  #: items  :: iter (a, b)
+  #: values :: iter b
+  #:
+  keys   = ~> for k in self => yield k
+  items  = ~> for (k, vs) in dict.items self => for v in vs => yield (k, v)
+  values = ~> for (k, vs) in dict.items self => for v in vs => yield v
+
+  #: Extend value lists with additional data.
+  #:
+  #: update :: (Either (dict a b) (iter (a, b))) -> NoneType
+  #:
+  update = init ~>
+    items = if
+      init :: dict => init.items!
+      otherwise    => init
+    for (k, v) in items => self.add k v
+
+  #: Replace existing values with those from another iterable.
+  #:
+  #: replace :: (Either (dict a b) (iter (a, b))) -> NoneType
+  #:
+  replace = init ~>
+    items = if
+      init :: dict => init.items!
+      otherwise    => init
+    for (k, v) in items => self !! k = v
+
+
+Headers = subclass MultiDict where
+  __getitem__ = k      ~> MultiDict.__getitem__ self (@normalize k)
+  __delitem__ = k      ~> MultiDict.__delitem__ self (@normalize k)
+  __setitem__ = k v    ~> MultiDict.__setitem__ self (@normalize k) v
+  setdefault  = k v    ~> MultiDict.setdefault  self (@normalize k) v
+  get         = k *: a ~> MultiDict.get         self (@normalize k) *: a
+  getall      = k      ~> MultiDict.getall      self (@normalize k)
+  normalize = staticmethod $ k -> str.lower $ k.replace '_' '-'
+
+
+Accept = subclass list where
+  __init__ = init: () ~>
+    list.__init__ self init
+    list.sort     self reverse: True key: snd
+    None
+
+  __getitem__ = k   ~> next (where for (p, w) in self => @__matches__ k p => yield w) 0
+  __matches__ = k p ~> k == p
+
+
+AcceptMIME = subclass Accept where
+  __matches__ = k p ~>
+    kmaj, kmin, *_ = (k + '/').split '/'
+    pmaj, pmin, *_ = (p + '/').split '/'
+    pmaj in ('*', kmaj) and pmin in ('*', kmin)
+
+AcceptCharset  = subclass Accept where # TODO
+AcceptLanguage = subclass Accept where # TODO
+AcceptEncoding = subclass Accept where # TODO

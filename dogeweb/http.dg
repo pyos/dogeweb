@@ -1,0 +1,36 @@
+import '/urllib/parse'
+
+
+#: Parse an `Accept` HTTP header.
+#:
+#:   header = entry (',' entry)*
+#:   entry  = value (';' param)*
+#:   param  = attr '=' float
+#:   attr   = 'q' | 'mxs' | 'mxb'    # `mxs` and `mxb` are ignored.
+#:
+#: parse_accept :: str -> iter (str, float)
+#:
+parse_accept = data ->
+  for part in (data.replace ' ' '').split ',' =>
+    v, *ps = part.split ';'
+    q = 1
+    for p in ps =>
+      p.startswith 'q=' => q = except
+        err => float $ p.split '=' 1 !! 1
+        err :: Exception => 1
+    yield (v, q)
+
+
+#: Parse a list of `Cookie` headers.
+#:
+#:   header = entry (';' entry)*
+#:   entry  = urlencoded '=' urlencoded
+#:
+#: parse_cookies :: (iter str) -> iter (str, str)
+#:
+parse_cookies = xs ->
+  for x in xs =>
+    for c in x.split ';' =>
+      k, v, *_ = (c + '=').split '='
+      k => yield (parse.unquote k.strip!, parse.unquote v.strip!)
+

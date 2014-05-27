@@ -222,7 +222,7 @@ dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
 host = *: choices -> req **: k -> next $
   where
     for (host, fn) in choices =>
-      if req.headers.get 'Host' `_issubdomainof` host =>
+      if req.headers.get 'Host' '' `_issubdomainof` host =>
         yield $ callprop fn req **: k
     req.abort 404
 

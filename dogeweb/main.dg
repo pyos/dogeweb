@@ -74,7 +74,7 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
           yield from $ _safe_error req middle
 
     resp2 = aiohttp.Response @writer resp1.code
-    resp2.add_headers *: resp1.headers.items!
+    resp2.add_headers *: resp1.headers.items
     resp2.send_headers!
     yield from $ resp1.write_to resp2
     yield from $ resp2.write_eof!

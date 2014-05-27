@@ -1,11 +1,8 @@
 import 'route'
 import 'response'
 
-import '/werkzeug/http'
-import '/werkzeug/datastructures/Headers'
-import '/werkzeug/datastructures/MIMEAccept'
-import '/werkzeug/datastructures/CharsetAccept'
-import '/werkzeug/datastructures/LanguageAccept'
+import 'http'
+import 'struct'
 
 
 #: When a property is first accessed, cache the result of calling a function and return it.
@@ -40,7 +37,7 @@ Request = subclass route.ContextAware response.ContextAware where
     @version     = raw.version
     @method      = raw.method
     @path        = raw.path
-    @headers     = Headers raw.headers
+    @headers     = struct.Headers raw.headers
     @compression = raw.compression
     @shouldclose = raw.should_close
     (super Request self).__init__!
@@ -50,13 +47,13 @@ Request = subclass route.ContextAware response.ContextAware where
   #: accept :: { .mime :: Accept, .charset :: Accept, .language :: Accept, .encoding :: Accept }
   #:
   accept = _mcache $ ~>
-    mime     = _mcache $ _ -> http.parse_accept_header (@headers.get 'accept')          MIMEAccept
-    charset  = _mcache $ _ -> http.parse_accept_header (@headers.get 'accept-charset')  CharsetAccept
-    language = _mcache $ _ -> http.parse_accept_header (@headers.get 'accept-language') LanguageAccept
-    encoding = _mcache $ _ -> http.parse_accept_header (@headers.get 'accept-encoding')
+    mime     = _mcache $ _ -> struct.AcceptMIME     $ http.parse_accept $ @headers.get 'accept'
+    charset  = _mcache $ _ -> struct.AcceptCharset  $ http.parse_accept $ @headers.get 'accept-charset'
+    language = _mcache $ _ -> struct.AcceptLanguage $ http.parse_accept $ @headers.get 'accept-language'
+    encoding = _mcache $ _ -> struct.AcceptEncoding $ http.parse_accept $ @headers.get 'accept-encoding'
     (subclass object)!
 
-  cookies  = _mcache $ ~> raise NotImplementedError
+  cookies  = _mcache $ ~> dict $ http.parse_cookies $ @headers.getall 'cookie'
   encoding = _mcache $ ~> raise NotImplementedError
   form     = _mcache $ ~> raise NotImplementedError
   args     = _mcache $ ~> raise NotImplementedError

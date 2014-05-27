@@ -111,24 +111,25 @@ pathrouter = f no_bare: False -> *: xs ->
 metarouter = fn -> *: choices **: k ->
   choices = list
     where for (*xs, h) in choices => if
-      h :: property => yield $ tuple xs + (h.fget,)
-      otherwise     => yield $ tuple xs + (h,)
+      h :: property => yield $ tuple xs + (_methodcheck h.fget,)
+      otherwise     => yield $ tuple xs + (_methodcheck h,)
   g = fn *: choices **: k
   g.metarouter = True
   g
 
 
-#: Check whether the method is GET or there was a `method` router
+#: Make the function check whether the method is GET or there was a `method` router
 #: somewhere along the path. Raise HTTP 405 otherwise.
 #:
-#: _methodcheck :: object Request -> a
+#: _methodcheck :: (Request * ** -> a) -> Request * ** -> a
 #:
-_methodcheck = fn req -> if
-  req._nomethodcheck        =>
-  req.method == 'GET'       =>
-  req.method == 'HEAD'      =>
-  getattr fn 'metarouter' 0 =>
-  otherwise => req.abort 405
+_methodcheck = fn -> if
+  hasattr fn 'metarouter' => fn  # Only endpoints need to check that.
+  otherwise => *: a **: k ~> if
+    @_nomethodcheck   => fn self *: a **: k
+    @method == 'GET'  => fn self *: a **: k
+    @method == 'HEAD' => fn self *: a **: k
+    otherwise         => @abort 405
 
 
 #: Check whether a requested `Host` is a subdomain of another.
@@ -166,7 +167,6 @@ upgrade = metarouter $ *: choices -> req **: k -> next $
   where
     up = req.headers.get 'Upgrade' 'http'
     for (protocol, fn) in choices => if protocol == up =>
-      _methodcheck fn req
       yield $ fn req **: k
     req.abort 505
 
@@ -178,7 +178,6 @@ upgrade = metarouter $ *: choices -> req **: k -> next $
 accept = metarouter $ *: choices -> req **: k ->
   xs = map ((i, (x, h)) -> (req.accept.mime !! x, -i, h)) $ enumerate choices
   fn = max xs !! 2
-  _methodcheck fn req
   fn req **: k
 
 
@@ -205,7 +204,6 @@ file = metarouter $ pathrouter $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issameas` path) =>
-        _methodcheck fn req
         k.update $ snd match
         yield    $ fn req **: k
     req.abort 404
@@ -228,7 +226,6 @@ dir = metarouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -
   where
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
-        _methodcheck fn req
         req.modroute.append fn
         req.modname .append $ routerev.get fn None
         req.modpath .append $ req.path !! slice None (fst match)
@@ -247,7 +244,6 @@ host = metarouter $ *: choices -> req **: k -> next $
   where
     for (host, fn) in choices =>
       if req.headers.get 'Host' '' `_issubdomainof` host =>
-        _methodcheck fn req
         yield $ fn req **: k
     req.abort 404
 

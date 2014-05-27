@@ -138,9 +138,8 @@ Response = subclass response.Response where
   #: defheaders :: dict str str
   #:
   defheaders = ~> dict'
-    'Upgrade',           'websocket'
-    'Connection',        'upgrade'
-    'Transfer-Encoding', 'chunked'
+    'Upgrade',    'websocket'
+    'Connection', 'upgrade'
     'Sec-WebSocket-Accept',
       (base64.b64encode (hashlib.sha1 $ @key.encode 'ascii' + GUID).digest!).decode 'ascii'
 

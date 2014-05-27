@@ -2,16 +2,6 @@ import '/re'
 import '/itertools'
 
 
-#: Call a function if it is indeed a function; if it's actually a property,
-#: call its `fget` method. Allows to use `~> methods` as routes.
-#:
-#: callprop :: (Either (*a **b -> c) (property c)) *a **b -> c
-#:
-callprop = f *: a **: kw -> if
-  f :: property => f.fget *: a **: kw
-  otherwise     => f      *: a **: kw
-
-
 #: Syntax for wildcards.
 #:
 #: WILDCARDRE :: Regex
@@ -113,6 +103,34 @@ pathrouter = f no_bare: False -> *: xs ->
   router
 
 
+#: Given a function that routes between multiple handler functions,
+#: allow it to accept properties, too. Also, mark it as a router.
+#:
+#: metarouter :: Router a -> Router a
+#:
+metarouter = fn -> *: choices **: k ->
+  choices = list
+    where for (*xs, h) in choices => if
+      h :: property => yield $ tuple xs + (h.fget,)
+      otherwise     => yield $ tuple xs + (h,)
+  g = fn *: choices **: k
+  g.metarouter = True
+  g
+
+
+#: Check whether the method is GET or there was a `method` router
+#: somewhere along the path. Raise HTTP 405 otherwise.
+#:
+#: _methodcheck :: object Request -> a
+#:
+_methodcheck = fn req -> if
+  req._nomethodcheck        =>
+  req.method == 'GET'       =>
+  req.method == 'HEAD'      =>
+  getattr fn 'metarouter' 0 =>
+  otherwise => req.abort 405
+
+
 #: Check whether a requested `Host` is a subdomain of another.
 #:
 #: _issubdomainof :: str str -> bool
@@ -144,10 +162,12 @@ _issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path =
 #:
 #: upgrade :: Router str
 #:
-upgrade = *: choices -> req **: k -> next $
+upgrade = metarouter $ *: choices -> req **: k -> next $
   where
     up = req.headers.get 'Upgrade' 'http'
-    for (protocol, fn) in choices => if protocol == up => yield $ callprop fn req **: k
+    for (protocol, fn) in choices => if protocol == up =>
+      _methodcheck fn req
+      yield $ fn req **: k
     req.abort 505
 
 
@@ -155,10 +175,11 @@ upgrade = *: choices -> req **: k -> next $
 #:
 #: accept :: Router str
 #:
-accept = *: choices -> req **: k ->
+accept = metarouter $ *: choices -> req **: k ->
   xs = map ((i, (x, h)) -> (req.accept.mime !! x, -i, h)) $ enumerate choices
   fn = max xs !! 2
-  callprop fn req **: k
+  _methodcheck fn req
+  fn req **: k
 
 
 #: Route on HTTP method. Method names are uppercase.
@@ -166,11 +187,12 @@ accept = *: choices -> req **: k ->
 #:
 #: method :: Router str
 #:
-method = *: choices -> req **: k -> next $
+method = metarouter $ *: choices -> req **: k -> next $
   where
+    req._nomethodcheck = True
     for (method, fn) in choices =>
       if method == req.method or (req.method == 'HEAD' and method == 'GET') =>
-        yield $ callprop fn req **: k
+        yield $ fn req **: k
     req.abort 405
 
 
@@ -179,12 +201,13 @@ method = *: choices -> req **: k -> next $
 #:
 #: file :: Router str
 #:
-file = pathrouter $ *: choices routerev -> req **: k -> next $
+file = metarouter $ pathrouter $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issameas` path) =>
+        _methodcheck fn req
         k.update $ snd match
-        yield    $ callprop fn req **: k
+        yield    $ fn req **: k
     req.abort 404
 
 
@@ -201,16 +224,17 @@ file = pathrouter $ *: choices routerev -> req **: k -> next $
 #:
 #: dir :: Router str
 #:
-dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
+dir = metarouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
+        _methodcheck fn req
         req.modroute.append fn
         req.modname .append $ routerev.get fn None
         req.modpath .append $ req.path !! slice None (fst match)
         req.path            = req.path !! slice (fst match) None
         k.update $ snd match
-        yield    $ callprop fn req **: k
+        yield    $ fn req **: k
     req.abort 404
 
 
@@ -219,11 +243,12 @@ dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
 #:
 #: host :: Router str
 #:
-host = *: choices -> req **: k -> next $
+host = metarouter $ *: choices -> req **: k -> next $
   where
     for (host, fn) in choices =>
       if req.headers.get 'Host' '' `_issubdomainof` host =>
-        yield $ callprop fn req **: k
+        _methodcheck fn req
+        yield $ fn req **: k
     req.abort 404
 
 
@@ -238,6 +263,8 @@ ContextAware = subclass object where
     @modpath  = list!
     @modroute = list!
     @modname  = list!
+    # If this is set to `True`, `_methodcheck` does nothing.
+    @_nomethodcheck = False
     (super ContextAware self).__init__ *: a **: k
 
   #: The requested path relative to `/`, not the current module.

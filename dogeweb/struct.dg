@@ -1,3 +1,6 @@
+import '/asyncio'
+
+
 MultiDict = subclass dict where
   #: A dictionary that can transparently store multiple values as a list.
   #: It can be initialized either like a normal dict, except every value
@@ -103,3 +106,14 @@ AcceptMIME = subclass Accept where
 AcceptCharset  = subclass Accept where # TODO
 AcceptLanguage = subclass Accept where # TODO
 AcceptEncoding = subclass Accept where # TODO
+
+
+File = subclass object where
+  __init__ = name data ~>
+    @name = name
+    @data = data
+    None
+
+  save = asyncio.coroutine $ target ~>
+    # TODO make this async.
+    with fd = open target 'wb' => fd.write @data

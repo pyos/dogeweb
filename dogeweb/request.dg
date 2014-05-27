@@ -35,12 +35,12 @@ Request = subclass route.ContextAware response.ContextAware websocket.ContextAwa
   #: handler  :: Handler  -- the root handler of the application this request was received by.
   #:
   __init__ = raw @payload @protocol @handler ~>
-    @version     = raw.version
-    @method      = raw.method
-    @path        = raw.path
-    @headers     = struct.Headers raw.headers
-    @compression = raw.compression
-    @shouldclose = raw.should_close
+    @version         = raw.version
+    @method          = raw.method
+    @path, _, @query = raw.path.partition '?'
+    @headers         = struct.Headers raw.headers
+    @compression     = raw.compression
+    @shouldclose     = raw.should_close
     (super Request self).__init__!
 
   #: Values of various `Accept-*` HTTP headers as dict-like objects.
@@ -48,14 +48,12 @@ Request = subclass route.ContextAware response.ContextAware websocket.ContextAwa
   #: accept :: { .mime :: Accept, .charset :: Accept, .language :: Accept, .encoding :: Accept }
   #:
   accept = _mcache $ ~>
-    mime     = _mcache $ _ -> struct.AcceptMIME     $ http.parse_accept $ @headers.get 'accept'
-    charset  = _mcache $ _ -> struct.AcceptCharset  $ http.parse_accept $ @headers.get 'accept-charset'
-    language = _mcache $ _ -> struct.AcceptLanguage $ http.parse_accept $ @headers.get 'accept-language'
-    encoding = _mcache $ _ -> struct.AcceptEncoding $ http.parse_accept $ @headers.get 'accept-encoding'
+    mime     = _mcache $ _ -> struct.AcceptMIME     $ http.accept $ @headers.get 'accept'
+    charset  = _mcache $ _ -> struct.AcceptCharset  $ http.accept $ @headers.get 'accept-charset'
+    language = _mcache $ _ -> struct.AcceptLanguage $ http.accept $ @headers.get 'accept-language'
+    encoding = _mcache $ _ -> struct.AcceptEncoding $ http.accept $ @headers.get 'accept-encoding'
     (subclass object)!
 
-  cookies  = _mcache $ ~> dict $ http.parse_cookies $ @headers.getall 'cookie'
-  encoding = _mcache $ ~> raise NotImplementedError
-  form     = _mcache $ ~> raise NotImplementedError
-  args     = _mcache $ ~> raise NotImplementedError
-  files    = _mcache $ ~> raise NotImplementedError
+  cookies = _mcache $ ~> dict $ http.cookies $ @headers.getall 'cookie'
+  args    = _mcache $ ~> struct.MultiDict $ http.query @query
+  form    = _mcache $ ~> struct.MultiDict $ http.body  @payload @headers

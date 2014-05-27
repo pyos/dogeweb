@@ -1,4 +1,7 @@
-import '/urllib/parse'
+import '/cgi'
+import '/urllib/parse/unquote'
+
+import 'struct'
 
 
 #: Parse an `Accept` HTTP header.
@@ -8,9 +11,9 @@ import '/urllib/parse'
 #:   param  = attr '=' float
 #:   attr   = 'q' | 'mxs' | 'mxb'    # `mxs` and `mxb` are ignored.
 #:
-#: parse_accept :: str -> iter (str, float)
+#: accept :: str -> iter (str, float)
 #:
-parse_accept = data ->
+accept = data -> data =>
   for part in (data.replace ' ' '').split ',' =>
     v, *ps = part.split ';'
     q = 1
@@ -21,16 +24,90 @@ parse_accept = data ->
     yield (v, q)
 
 
-#: Parse a list of `Cookie` headers.
+#: Parse a list of `Cookie` headers, which are `application/x-www-urlencoded`
+#: with different separators.
 #:
-#:   header = entry (';' entry)*
-#:   entry  = urlencoded '=' urlencoded
+#: cookies :: (iter str) (Optional str) -> iter (str, str)
 #:
-#: parse_cookies :: (iter str) -> iter (str, str)
-#:
-parse_cookies = xs ->
-  for x in xs =>
-    for c in x.split ';' =>
-      k, v, *_ = (c + '=').split '='
-      k => yield (parse.unquote k.strip!, parse.unquote v.strip!)
+cookies = xs encoding: 'utf-8' -> for x in xs => yield from $ query x encoding ';' ' '
 
+
+#: Parse an HTTP request payload, which is either `application/x-www-urlencoded'
+#: or `multipart/form-data`.
+#:
+#: body :: bytes Headers -> iter (str, Either str File)
+#:
+body = data headers ->
+  # TODO Content-Transfer-Encoding
+  ctype       = headers.get 'Content-Type' ''
+  ctype, args = cgi.parse_header ctype
+  encoding    = args.get 'charset'  'utf-8'
+  boundary    = args.get 'boundary' None
+  if ctype == 'application/x-www-form-urlencoded' => query (data.decode encoding) encoding
+     ctype == 'multipart/form-data' => if
+       boundary is None => list!  # bad request
+       otherwise        => multipart data boundary encoding
+     otherwise => list!
+
+
+#: Parse an application/x-www-urlencoded parameter map.
+#:
+#:   value = entry ('&' entry)*
+#:   entry = urlencoded '=' urlencoded
+#:
+#: query :: str (Optional str) (Optional str) (Optional str) -> iter (str, str)
+#:
+query = xs encoding: 'utf-8' sep: '&' space: '+' ->
+  for x in xs.split sep =>
+    n, _, v = x.partition '='
+    n => yield $ tuple'
+      unquote (n.replace space ' ').strip! encoding
+      unquote (v.replace space ' ').strip! encoding
+
+
+#: Parse (nested) multipart/form-data.
+#:
+#:   value    = (data '\r\n')? ('--' boundary '\r\n' part '\r\n')* '--' boundary '--'
+#:   boundary = <attribute of Content-Type>
+#:   part     = header* '\r\n' data
+#:
+#: multipart :: bytes str (Optional str) -> iter (str, Either str File)
+#:
+multipart = data boundary encoding: 'utf-8' ->
+  sep  = b'\r\n--' + boundary.encode encoding + b'\r\n'
+  end  = b'\r\n--' + boundary.encode encoding + b'--\r\n'
+  data = b'\r\n' + data
+  # 1. There is no useful content in the preamble/epilogue for us.
+  start  = data.find sep
+  finish = data.rfind end
+  # 2. The payload has to contain at least one boundary.
+  #    It also has to end with the same boundary.
+  start  >= 0 or raise StopIteration
+  finish >= 0 or raise StopIteration
+  data !!= slice (start + len sep) finish
+
+  while data =>
+    start  = data.find b'\r\n\r\n'
+    finish = data.find sep start
+    finish < 0 => finish = len data
+
+    headers = data !! slice None start
+    content = data !! slice (start + 4) finish
+    data    = data !! slice (finish + len sep) None
+    headers = struct.Headers
+      where
+        lines = headers.split b'\r\n'
+        for (i, line) in enumerate lines 1 => if
+          line !! 0 in b' \t' =>  # a continuation line; has already been consumed.
+          not $ b':' in line  =>  # not a valid header
+          otherwise =>
+            line += b''.join $ takewhile (x -> x and x !! 0 in b' \t') $ drop i lines
+            n, v  = line.split b':' 1
+            yield (n.strip!.decode encoding, v.strip!.decode encoding)
+
+    disp, attrs = cgi.parse_header $ headers.get 'Content-Disposition' ''
+    name  = attrs.get 'name'     None
+    fname = attrs.get 'filename' None
+    name => yield $ body content headers or if
+      fname is None => name, content.decode encoding
+      otherwise     => name, struct.File fname content

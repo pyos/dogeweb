@@ -19,7 +19,7 @@ PING  = 0x9
 PONG  = 0xa
 SHORT = 0xFFFF
 LONG  = 0xFFFFFFFFFFFFFFFF
-!=?   = a b -> a.lower!.strip! != b.lower!.strip!
+!=?   = a b -> not $ b.lower!.strip! in list (map str.strip $ a.lower!.split ',')
 
 
 #: ???

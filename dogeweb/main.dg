@@ -78,7 +78,7 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
     resp2.send_headers!
     yield from $ resp1.write_to resp2
     yield from $ resp2.write_eof!
-    if resp2.keep_alive! => @keep_alive True
+    resp2.keep_alive! => @keep_alive True
 
 
 Server = subclass object where
@@ -87,23 +87,25 @@ Server = subclass object where
   #: handler :: typeof Protocol.handler
   #: onerror :: typeof Protocol.onerror
   #:
-  __init__ = handler onerror: _safe_error *: a **: k  ~>
+  __init__ = handler onerror: _safe_error loop: None **: kwargs  ~>
     @handler = handler
     @onerror = onerror
+    @loop    = loop or asyncio.get_event_loop!
+    @kwargs  = kwargs
+    @kwargs.setdefault 'keep_alive' 30
     None
 
   #: Create a new connection.
   #:
   #: () :: -> Protocol
   #:
-  __call__ = self -> Protocol @handler @onerror
+  __call__ = self -> Protocol @handler @onerror loop: @loop **: @kwargs
 
   #: Start the dev server. `gunicorn` had an asyncio worker, I think?
   #:
   #: run :: str int -> ()
   #:
   run = host port ~>
-    loop = asyncio.get_event_loop!
-    srv  = loop.run_until_complete $ loop.create_server self host port
-    except err => loop.run_forever!
+    srv  = @loop.run_until_complete $ @loop.create_server self host port
+    except err => @loop.run_forever!
            err :: KeyboardInterrupt =>

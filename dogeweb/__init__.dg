@@ -5,5 +5,7 @@ import 'response'
 import 'websocket'
 
 
-r     = route
-app   = main.Server
+r       = route
+app     = main.Server
+abort   = response.ContextAware.abort
+jsonify = response.jsonify

@@ -41,8 +41,19 @@ Abort = subclass Exception where
   #:
   #: ???
   #:
-  __init__ = @code @description: '' @headers: dict! ~>
-    (super Abort self).__init__ @code @description @headers
+  __init__ = @code @description: '' @headers: dict! @flags: 0 ~>
+    @description = @description or @default.get @code ''
+    (super Abort self).__init__ @description
+
+  #: Some standard error descriptions.
+  #:
+  #: default :: dict int str
+  #:
+  default = dict'
+    400, 'Bad Request'
+    403, 'Forbidden'
+    404, 'Not Found'
+    500, 'Internal Server Error'
 
 
 Response = subclass object where
@@ -126,7 +137,7 @@ ContextAware = subclass object where
   #:
   #: abort :: int (Optional str) (Optional (dict str str)) -> a
   #:
-  abort = code description: '' headers: dict! ~> raise $ Abort code description headers
+  abort = classmethod $ code info: '' headers: dict! flags: 0 ~> raise $ Abort code info headers flags
 
   #: Issue a 302 Found. The client is redirected to a new URL.
   #:

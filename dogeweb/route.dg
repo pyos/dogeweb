@@ -5,13 +5,6 @@ import '/itertools'
 import 'response'
 
 
-#: A special abort flag used to signal routing errors.
-#:
-#: ROUTING :: int
-#:
-ROUTING = 0xf0
-
-
 #: Syntax for wildcards.
 #:
 #: WILDCARDRE :: Regex
@@ -198,26 +191,7 @@ upgrade = proprouter $ *: choices -> req **: k -> next $
     up = req.headers.get 'Upgrade' 'http'
     for (protocol, fn) in choices => if protocol == up =>
       yield $ fn req **: k
-    req.abort 505 flags: ROUTING
-
-
-#: Select the first handler that does not raise 404.
-#:
-#: either :: *Handler -> Handler
-#:
-either = proprouter $ *: fs ->
-  fn = req *: a **: k -> next $
-    where
-      for f in fs => except
-        err => yield $ f req *: a **: k
-        err :: response.Abort and err.flags == ROUTING =>
-      req.abort 404 flags: ROUTING
-  fn.routemap = dict!
-  fn.routerev = dict!
-  for f in fs =>
-    fn.routemap.update $ getattr f 'routemap' dict!
-    fn.routerev.update $ getattr f 'routerev' dict!
-  fn
+    req.abort 505
 
 
 #: Route on HTTP `Accept`.
@@ -241,7 +215,7 @@ method = proprouter $ *: choices -> req **: k -> next $
     for (method, fn) in choices =>
       if method == req.method or (req.method == 'HEAD' and method == 'GET') =>
         yield $ fn req **: k
-    req.abort 405 flags: ROUTING
+    req.abort 405
 
 
 #: Route on HTTP path. If a request was made to `/something` and a route was found
@@ -255,7 +229,7 @@ file = proprouter $ pathrouter $ *: choices routerev -> req **: k -> next $
       if (match = req.path `_issameas` path) =>
         k.update $ snd match
         yield    $ fn req **: k
-    req.abort 404 flags: ROUTING
+    req.abort 404
 
 
 #: Route between multiple other routers as if they were subdirectories::
@@ -281,7 +255,7 @@ dir = proprouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -
         req.path            = req.path !! slice (fst match) None
         k.update $ snd match
         yield    $ fn req **: k
-    req.abort 404 flags: ROUTING
+    req.abort 404
 
 
 #: Route on HTTP `Host` header. A handler matches iff `Host` is a non-strict
@@ -294,7 +268,7 @@ host = proprouter $ *: choices -> req **: k -> next $
     for (host, fn) in choices =>
       if req.headers.get 'Host' '' `_issubdomainof` host =>
         yield $ fn req **: k
-    req.abort 404 flags: ROUTING
+    req.abort 404
 
 
 ContextAware = subclass object where

@@ -129,7 +129,7 @@ ContextAware = subclass object where
   #:
   #: abort :: int (Optional str) (Optional (dict str str)) -> a
   #:
-  abort = classmethod $ code info: '' headers: dict! flags: 0 ~> raise $ Abort code info headers flags
+  abort = classmethod $ code info: '' headers: dict! ~> raise $ Abort code info headers
 
   #: Issue a 302 Found. The client is redirected to a new URL.
   #:

@@ -1,0 +1,28 @@
+import '/os'
+import '/asyncio'
+import '/gunicorn/workers/base'
+
+
+Worker = subclass base.Worker where
+  init_process = self ->
+    @loop = asyncio.new_event_loop!
+    asyncio.get_event_loop!.close!
+    asyncio.set_event_loop @loop
+    (super Worker self).init_process!
+
+  run = self -> except
+    _       => @loop.run_until_complete @task
+    finally => @loop.close!
+
+  task = ~>
+    servers = list!
+    for sock in @sockets => servers.append $ yield from $ @loop.create_server @wsgi sock: sock
+
+    except
+      err => while @alive =>
+        @notify!
+        @ppid != os.getppid! =>
+          @log.info "Parent changed, shutting down: %s" self
+          break!
+        yield from $ asyncio.sleep 1 loop: @loop
+      err :: KeyboardInterrupt =>

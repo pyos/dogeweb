@@ -1,5 +1,15 @@
 import '/re'
+import '/functools'
 import '/itertools'
+
+import 'response'
+
+
+#: A special abort flag used to signal routing errors.
+#:
+#: ROUTING :: int
+#:
+ROUTING = 0xf0
 
 
 #: Syntax for wildcards.
@@ -52,16 +62,18 @@ pathregex = path ->
 #:
 #: concrete :: (dict str object) str -> str
 #:
-concrete = args path -> WILDCARDRE.sub (m -> str $ args !! m.group 2) path
+concrete = args path -> re.sub r'/+' '/' $ WILDCARDRE.sub (m -> str $ args !! m.group 2) path
 
 
 #: Mark a function as a router. Unlike endpoints, routers accept any method.
 #:
 #: router :: a -> a
 #:
-router = fn ->
-  fn.router = True
-  fn
+router = fn -> if
+  fn :: property => router fn.fget
+  otherwise =>
+    fn.router = True
+    fn
 
 
 #: Given a function that decides between multiple routes based on the requested path,
@@ -119,10 +131,21 @@ pathrouter = f no_bare: False -> *: xs ->
 #:
 proprouter = fn -> *: choices **: k ->
   choices = list
-    where for (*xs, h) in choices => if
-      h :: property => yield $ tuple xs + (_methodcheck h.fget,)
-      otherwise     => yield $ tuple xs + (_methodcheck h,)
-  router $ fn *: choices **: k
+    where for h in choices => yield $
+      if h :: property => _methodcheck h.fget
+         h :: tuple    =>
+           *xs, h = h
+           if h :: property => tuple xs + (_methodcheck h.fget,)
+              otherwise     => tuple xs + (_methodcheck h,)
+         otherwise => _methodcheck h
+
+  names = where for h in choices =>
+    h :: tuple => *_, h = h
+    hasattr h '__name__' => yield h.__name__
+
+  r = router $ fn *: choices **: k
+  r.__name__ = next names '<lambda>'
+  r
 
 
 #: Make the function check whether the method is GET or there was a `method` router
@@ -132,7 +155,7 @@ proprouter = fn -> *: choices **: k ->
 #:
 _methodcheck = fn -> if
   hasattr fn 'router' => fn  # Only endpoints need to check that.
-  otherwise => *: a **: k ~> if
+  otherwise => functools.update_wrapper wrapped: fn $ *: a **: k ~> if
     @_nomethodcheck   => fn self *: a **: k
     @method == 'GET'  => fn self *: a **: k
     @method == 'HEAD' => fn self *: a **: k
@@ -175,7 +198,26 @@ upgrade = proprouter $ *: choices -> req **: k -> next $
     up = req.headers.get 'Upgrade' 'http'
     for (protocol, fn) in choices => if protocol == up =>
       yield $ fn req **: k
-    req.abort 505
+    req.abort 505 flags: ROUTING
+
+
+#: Select the first handler that does not raise 404.
+#:
+#: either :: *Handler -> Handler
+#:
+either = proprouter $ *: fs ->
+  fn = req *: a **: k -> next $
+    where
+      for f in fs => except
+        err => yield $ f req *: a **: k
+        err :: response.Abort and err.flags == ROUTING =>
+      req.abort 404 flags: ROUTING
+  fn.routemap = dict!
+  fn.routerev = dict!
+  for f in fs =>
+    fn.routemap.update $ getattr f 'routemap' dict!
+    fn.routerev.update $ getattr f 'routerev' dict!
+  fn
 
 
 #: Route on HTTP `Accept`.
@@ -199,7 +241,7 @@ method = proprouter $ *: choices -> req **: k -> next $
     for (method, fn) in choices =>
       if method == req.method or (req.method == 'HEAD' and method == 'GET') =>
         yield $ fn req **: k
-    req.abort 405
+    req.abort 405 flags: ROUTING
 
 
 #: Route on HTTP path. If a request was made to `/something` and a route was found
@@ -213,7 +255,7 @@ file = proprouter $ pathrouter $ *: choices routerev -> req **: k -> next $
       if (match = req.path `_issameas` path) =>
         k.update $ snd match
         yield    $ fn req **: k
-    req.abort 404
+    req.abort 404 flags: ROUTING
 
 
 #: Route between multiple other routers as if they were subdirectories::
@@ -239,7 +281,7 @@ dir = proprouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -
         req.path            = req.path !! slice (fst match) None
         k.update $ snd match
         yield    $ fn req **: k
-    req.abort 404
+    req.abort 404 flags: ROUTING
 
 
 #: Route on HTTP `Host` header. A handler matches iff `Host` is a non-strict
@@ -252,7 +294,7 @@ host = proprouter $ *: choices -> req **: k -> next $
     for (host, fn) in choices =>
       if req.headers.get 'Host' '' `_issubdomainof` host =>
         yield $ fn req **: k
-    req.abort 404
+    req.abort 404 flags: ROUTING
 
 
 ContextAware = subclass object where

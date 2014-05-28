@@ -55,6 +55,15 @@ pathregex = path ->
 concrete = args path -> WILDCARDRE.sub (m -> str $ args !! m.group 2) path
 
 
+#: Mark a function as a router. Unlike endpoints, routers accept any method.
+#:
+#: router :: a -> a
+#:
+router = fn ->
+  fn.router = True
+  fn
+
+
 #: Given a function that decides between multiple routes based on the requested path,
 #: create one that
 #:
@@ -106,16 +115,14 @@ pathrouter = f no_bare: False -> *: xs ->
 #: Given a function that routes between multiple handler functions,
 #: allow it to accept properties, too. Also, mark it as a router.
 #:
-#: metarouter :: Router a -> Router a
+#: proprouter :: Router a -> Router a
 #:
-metarouter = fn -> *: choices **: k ->
+proprouter = fn -> *: choices **: k ->
   choices = list
     where for (*xs, h) in choices => if
       h :: property => yield $ tuple xs + (_methodcheck h.fget,)
       otherwise     => yield $ tuple xs + (_methodcheck h,)
-  g = fn *: choices **: k
-  g.metarouter = True
-  g
+  router $ fn *: choices **: k
 
 
 #: Make the function check whether the method is GET or there was a `method` router
@@ -124,7 +131,7 @@ metarouter = fn -> *: choices **: k ->
 #: _methodcheck :: (Request * ** -> a) -> Request * ** -> a
 #:
 _methodcheck = fn -> if
-  hasattr fn 'metarouter' => fn  # Only endpoints need to check that.
+  hasattr fn 'router' => fn  # Only endpoints need to check that.
   otherwise => *: a **: k ~> if
     @_nomethodcheck   => fn self *: a **: k
     @method == 'GET'  => fn self *: a **: k
@@ -163,7 +170,7 @@ _issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path =
 #:
 #: upgrade :: Router str
 #:
-upgrade = metarouter $ *: choices -> req **: k -> next $
+upgrade = proprouter $ *: choices -> req **: k -> next $
   where
     up = req.headers.get 'Upgrade' 'http'
     for (protocol, fn) in choices => if protocol == up =>
@@ -175,7 +182,7 @@ upgrade = metarouter $ *: choices -> req **: k -> next $
 #:
 #: accept :: Router str
 #:
-accept = metarouter $ *: choices -> req **: k ->
+accept = proprouter $ *: choices -> req **: k ->
   xs = map ((i, (x, h)) -> (req.accept.mime !! x, -i, h)) $ enumerate choices
   fn = max xs !! 2
   fn req **: k
@@ -186,7 +193,7 @@ accept = metarouter $ *: choices -> req **: k ->
 #:
 #: method :: Router str
 #:
-method = metarouter $ *: choices -> req **: k -> next $
+method = proprouter $ *: choices -> req **: k -> next $
   where
     req._nomethodcheck = True
     for (method, fn) in choices =>
@@ -200,7 +207,7 @@ method = metarouter $ *: choices -> req **: k -> next $
 #:
 #: file :: Router str
 #:
-file = metarouter $ pathrouter $ *: choices routerev -> req **: k -> next $
+file = proprouter $ pathrouter $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issameas` path) =>
@@ -222,7 +229,7 @@ file = metarouter $ pathrouter $ *: choices routerev -> req **: k -> next $
 #:
 #: dir :: Router str
 #:
-dir = metarouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
+dir = proprouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
@@ -240,7 +247,7 @@ dir = metarouter $ pathrouter no_bare: True $ *: choices routerev -> req **: k -
 #:
 #: host :: Router str
 #:
-host = metarouter $ *: choices -> req **: k -> next $
+host = proprouter $ *: choices -> req **: k -> next $
   where
     for (host, fn) in choices =>
       if req.headers.get 'Host' '' `_issubdomainof` host =>

@@ -2,6 +2,7 @@ import '/os'
 import '/json'
 import '/asyncio'
 import '/mimetypes'
+import '/http/client/responses'
 
 import '/aiohttp'
 import '/aiohttp/websocket' qualified
@@ -42,18 +43,9 @@ Abort = subclass Exception where
   #: ???
   #:
   __init__ = @code @description: '' @headers: dict! @flags: 0 ~>
-    @description = @description or @default.get @code ''
     (super Abort self).__init__ @description
 
-  #: Some standard error descriptions.
-  #:
-  #: default :: dict int str
-  #:
-  default = dict'
-    400, 'Bad Request'
-    403, 'Forbidden'
-    404, 'Not Found'
-    500, 'Internal Server Error'
+  name = ~> responses.get @code 'Unknown Error'
 
 
 Response = subclass object where

@@ -60,3 +60,4 @@ Request = subclass route.ContextAware response.ContextAware websocket.ContextAwa
   form    = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: str) @_body
   files   = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @_body
   isxhr   = _mcache $ ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
+  isjson  = _mcache $ ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'

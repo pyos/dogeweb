@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>dogeweb — so not node.js</title>
+    <link rel="stylesheet" href="bootstrap.min.css" />
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" />
+    <link rel="stylesheet" href="tomorrow_night.css" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+    <script>
+      $(function () {
+        $('[data-load]').each(function () {
+          var self = $(this);
+          var href = $(this).attr('data-load');
+          $.get(href, function (data) { self.replaceWith(data); });
+        });
+      });
+    </script>
+
+    <style>
+      html, body {
+        background: #1d1f21;
+      }
+
+      .background {
+        position: fixed;
+        left:   0;
+        bottom: 0;
+        opacity: 0.2;
+        z-index: 90;
+        background: url(index.bg.png) bottom left no-repeat;
+        background-size: contain;
+      }
+
+      @media (max-height: 638px) { .background { top:        0; } }
+      @media (min-height: 639px) { .background { height: 638px; } }
+      @media (max-width:  575px) { .background { right:      0; } }
+      @media (min-width:  576px) { .background { width:  638px; } }
+
+      .container {
+        position: relative;
+        overflow: hidden;
+        z-index: 100;
+      }
+
+      .navbar-default {
+        background: none;
+      }
+
+      pre {
+        background: rgba(29, 31, 33, 0.5);
+        border: none;
+        color: inherit;
+        font-family: monospace;
+      }
+
+      .highlight {
+        background: none;
+      }
+
+      @media (min-width: 768px) {
+        .container, .floating-stuff {
+          width: 750px;
+        }
+
+        pre {
+          width: 500px;
+        }
+
+        pre, .floating-stuff {
+          margin-left: auto;
+          margin-right: auto;
+        }
+      }
+
+      @media (min-width: 992px) {
+        .container, .floating-stuff {
+          width: 840px;
+        }
+      }
+
+      .big-text-container {
+        border-radius: 0 !important;
+        margin: 0 -15px 15px -15px;
+        background: none;
+      }
+
+      .floating-stuff {
+        position: relative;
+        font-size: 1.5em;
+        opacity: 0.5;
+        top: 6em;
+      }
+
+      .floating-stuff > * {
+        display: inline-block;
+        position: absolute;
+        line-height: 1.5em;
+      }
+
+      .floating-stuff > *:nth-child(1) { top:  6.0em; left:  40%; }
+      .floating-stuff > *:nth-child(2) { top: 12.0em; right: 10%; }
+      .floating-stuff > *:nth-child(3) { top: 18.0em; left:  05%; }
+      .floating-stuff > *:nth-child(4) { top: 24.0em; right: 25%; }
+      .floating-stuff > *:nth-child(5) { top: 30.0em; right: 25%; }
+
+      footer {
+        margin-top:    30px;
+        margin-bottom: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background"></div>
+    <div class="floating-stuff hidden">
+      <div>such <a href="https://docs.python.org/3/library/asyncio.html">asyncio</a></div>
+      <div>much <a href="http://pyos.github.io/dg/">dg</a></div>
+      <div>and <a href="https://github.com/KeepSafe/aiohttp">aiohttp</a></div>
+      <div>so <a href="http://flask.pocoo.org/">web framework</a></div>
+      <div><a href="http://eu.battle.net/wow/">wow</a></div>
+    </div>
+    <div class="container">
+      <div class="navbar navbar-default navbar-static-top" role="navigation">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="." >dogeweb</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="https://pyos.github.io/dg/">What language is THAT?</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="jumbotron big-text-container">
+        <h1>doge<span class="text-muted">4</span>web</h1>
+        <p class="lead">
+          A functional asyncio-based web framework.
+        </p>
+      </div>
+
+
+      <div class="row">
+        <h3 class="text-center">Simple</h3>
+        <div data-load="index.hello-world.html"></div>
+      </div>
+
+      <div class="row">
+        <h3 class="text-center">Modern</h3>
+        <div data-load="index.websocket.html"></div>
+      </div>
+
+      <div class="row">
+        <h3 class="text-center">Fast</h3>
+        <div data-load="index.wrk.html"></div>
+      </div>
+
+      <footer class="text-muted">
+        <a href="https://github.com/pyos">@pyos</a> continues to deliver.
+      </footer>
+    </div>
+  </body>
+</html>

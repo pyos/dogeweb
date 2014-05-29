@@ -1,0 +1,8 @@
+import '/dogeweb'
+import '/dogeweb/r'
+
+app = dogeweb.app $ r.file
+  '/',   ~> 'Hello, World!'
+  '/u/', ~> 'Hello, Universe!'
+
+if __name__ == "__main__" => app.run '0.0.0.0' 8000

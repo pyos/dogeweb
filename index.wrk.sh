@@ -1,0 +1,13 @@
+$ gunicorn --daemon -b 127.0.0.1:8001 -w 4 \
+|   yoboard.viewserver.flask:app
+$ wrk -c 50 -t 5 -d 30 http://127.0.0.1:8001/
+...
+Requests/sec:   3745.77
+...
+$ gunicorn --daemon -b 127.0.0.1:8002 -w 4 \
+|   -k dogeweb.gunicorn.Worker \
+|   yoboard.viewserver.dogeweb:app
+$ wrk -c 50 -t 5 -d 30 http://127.0.0.1:8002/
+...
+Requests/sec:   6328.94
+...

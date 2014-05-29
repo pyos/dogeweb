@@ -1,0 +1,14 @@
+<div class="highlight"><pre><span class="nv">$ </span>gunicorn --daemon -b 127.0.0.1:8001 -w <span class="m">4</span> <span class="se">\</span>
+<span class="p">|</span>   yoboard.viewserver.flask:app
+<span class="nv">$ </span>wrk -c <span class="m">50</span> -t <span class="m">5</span> -d <span class="m">30</span> http://127.0.0.1:8001/
+...
+Requests/sec:   3745.77
+...
+<span class="nv">$ </span>gunicorn --daemon -b 127.0.0.1:8002 -w <span class="m">4</span> <span class="se">\</span>
+<span class="p">|</span>   -k dogeweb.gunicorn.Worker <span class="se">\</span>
+<span class="p">|</span>   yoboard.viewserver.dogeweb:app
+<span class="nv">$ </span>wrk -c <span class="m">50</span> -t <span class="m">5</span> -d <span class="m">30</span> http://127.0.0.1:8002/
+...
+Requests/sec:   6328.94
+...
+</pre></div>

@@ -120,7 +120,7 @@ IOResponse = subclass Response where
       err :: AttributeError => 'Transfer-Encoding', 'chunked'
 
 
-#: Stop the response handler, return an error message.
+#: Stop the handler, return an error message.
 #:
 #: abort :: int (Optional str) (Optional (dict str str)) -> a
 #:
@@ -136,9 +136,9 @@ redirect = path description: '' -> raise $ Abort 302 description $ dict' locatio
 
 #: Serve a single static file.
 #:
-#: static :: str (Optional bool) (Optional int) (Optional (dict str str)) -> Response
+#: static :: str (Optional bool) (Optional (dict str str)) -> Response
 #:
-static = path attachment: True code: 200 headers: dict! -> except
+static = path attachment: True headers: dict! -> except
   # TODO make this crap asynchronous.
   err => fd = open path 'rb'
   err :: IOError => abort 404
@@ -148,4 +148,4 @@ static = path attachment: True code: 200 headers: dict! -> except
       # TODO specify `filename`.
       headers.setdefault 'Content-Disposition' 'attachment'
     headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
-    IOResponse code fd headers
+    IOResponse 200 fd headers

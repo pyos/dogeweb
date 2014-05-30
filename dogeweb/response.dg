@@ -57,12 +57,6 @@ Response = subclass object where
     @headers.replace headers
     None
 
-  #: Release all resources attached to this response.
-  #:
-  #: close :: a
-  #:
-  close = ~> None
-
   #: Write the data from this response into an object.
   #:
   #: write_to :: IOBase -> coroutine a
@@ -80,25 +74,16 @@ Response = subclass object where
     #      content-length could not be calculated.
 
 
-IOResponse = subclass Response where
+FileResponse = subclass Response where
   #: A `Response` that sends data from a file.
   #:
-  #: fileobj :: IOBase -- the file to read from.
-  #: bufsize :: int    -- how much data to read every syscall.
+  #: path    :: str -- the file to read from.
+  #: bufsize :: int -- how much data to read every syscall.
   #:
-  __init__ = code fileobj headers bufsize: 16384 ~>
-    @fileobj = fileobj
+  __init__ = code path headers bufsize: 16384 ~>
+    @path    = path
     @bufsize = bufsize
     Response.__init__ self code headers b''
-
-  #: Close the file object, if applicable.
-  #:
-  #: close :: a
-  #:
-  close = ~> except
-    err => @fileobj.close!
-    err :: IOError        =>
-    err :: AttributeError =>
 
   #: Send the contents of a file object.
   #:
@@ -106,18 +91,16 @@ IOResponse = subclass Response where
   #:
   write_to = asyncio.coroutine $ response ~>
     # TODO make this async?
-    while (b = @fileobj.read @bufsize) => response.write b
+    with fd = open @path 'rb' => while (b = fd.read @bufsize) => response.write b
 
-  #: IO-specific headers. `Content-Length` is determined via `stat`; if not possible,
-  #: `Transfer-Encoding: chunked` is used instead.
+  #: IO-specific headers. `Content-Length` is determined via `stat`.
   #:
   #: defheaders :: dict str str
   #:
   defheaders = ~> xs where
     xs = dict' $ except
-      err => 'Content-Length', str (os.stat @fileobj.fileno!).st_size
-      err :: IOError        => 'Transfer-Encoding', 'chunked'
-      err :: AttributeError => 'Transfer-Encoding', 'chunked'
+      err => 'Content-Length', str (os.stat @path).st_size
+      err :: OSError => abort 404
 
 
 #: Stop the handler, return an error message.
@@ -138,14 +121,10 @@ redirect = path description: '' -> raise $ Abort 302 description $ dict' locatio
 #:
 #: static :: str (Optional bool) (Optional (dict str str)) -> Response
 #:
-static = path attachment: True headers: dict! -> except
-  # TODO make this crap asynchronous.
-  err => fd = open path 'rb'
-  err :: IOError => abort 404
-  err is None    =>
-    mime = fst $ mimetypes.guess_type path strict: False
-    attachment =>
-      # TODO specify `filename`.
-      headers.setdefault 'Content-Disposition' 'attachment'
-    headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
-    IOResponse 200 fd headers
+static = path attachment: True headers: dict! ->
+  mime = fst $ mimetypes.guess_type path strict: False
+  attachment =>
+    # TODO specify `filename`.
+    headers.setdefault 'Content-Disposition' 'attachment'
+  headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
+  FileResponse 200 path headers

@@ -146,11 +146,9 @@ ContextAware = subclass object where
     err => fd = open path 'rb'
     err :: IOError => @abort 404
     err is None    =>
-      attachment and not ('Content-Disposition' in headers) =>
+      mime = fst $ mimetypes.guess_type path strict: False
+      attachment =>
         # TODO specify `filename`.
-        headers !! 'Content-Disposition' = 'attachment'
-      not $ 'Content-Type' in headers =>
-        mime = fst $ mimetypes.guess_type path strict: False
-        mime =>
-          headers !! 'Content-Type' = mime
+        headers.setdefault 'Content-Disposition' 'attachment'
+      headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
       IOResponse code fd headers

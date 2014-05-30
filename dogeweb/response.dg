@@ -120,35 +120,32 @@ IOResponse = subclass Response where
       err :: AttributeError => 'Transfer-Encoding', 'chunked'
 
 
-#: Methods added to `Request` objects since they require fields only available in it.
+#: Stop the response handler, return an error message.
 #:
-#: No parameters.
+#: abort :: int (Optional str) (Optional (dict str str)) -> a
 #:
-ContextAware = subclass object where
-  #: Stop the response handler, return an error message.
-  #:
-  #: abort :: int (Optional str) (Optional (dict str str)) -> a
-  #:
-  abort = classmethod $ code info: '' headers: dict! ~> raise $ Abort code info headers
+abort = code info: '' headers: dict! -> raise $ Abort code info headers
 
-  #: Issue a 302 Found. The client is redirected to a new URL.
-  #:
-  #: redirect :: str (Optional str) -> a
-  #:
-  redirect = path description: '' ~> raise $ Abort 302 description $ dict' ('Location', path)
 
-  #: Serve a single static file.
-  #:
-  #: static :: str (Optional bool) (Optional int) (Optional (dict str str)) -> Response
-  #:
-  static = path attachment: True code: 200 headers: dict! ~> except
-    # TODO make this crap asynchronous.
-    err => fd = open path 'rb'
-    err :: IOError => @abort 404
-    err is None    =>
-      mime = fst $ mimetypes.guess_type path strict: False
-      attachment =>
-        # TODO specify `filename`.
-        headers.setdefault 'Content-Disposition' 'attachment'
-      headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
-      IOResponse code fd headers
+#: Issue a 302 Found. The client is redirected to a new URL.
+#:
+#: redirect :: str (Optional str) -> a
+#:
+redirect = path description: '' -> raise $ Abort 302 description $ dict' location: path
+
+
+#: Serve a single static file.
+#:
+#: static :: str (Optional bool) (Optional int) (Optional (dict str str)) -> Response
+#:
+static = path attachment: True code: 200 headers: dict! -> except
+  # TODO make this crap asynchronous.
+  err => fd = open path 'rb'
+  err :: IOError => abort 404
+  err is None    =>
+    mime = fst $ mimetypes.guess_type path strict: False
+    attachment =>
+      # TODO specify `filename`.
+      headers.setdefault 'Content-Disposition' 'attachment'
+    headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
+    IOResponse code fd headers

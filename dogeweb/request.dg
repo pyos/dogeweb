@@ -23,7 +23,7 @@ _mcache = func -> if
     prop
 
 
-Request = subclass route.ContextAware response.ContextAware websocket.ContextAware where
+Request = subclass route.ContextAware websocket.ContextAware where
   #: Incoming request data.
   #:
   #: version  :: str      -- the HTTP version this request was made with.
@@ -61,3 +61,10 @@ Request = subclass route.ContextAware response.ContextAware websocket.ContextAwa
   files   = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @_body
   isxhr   = _mcache $ ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
   isjson  = _mcache $ ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'
+
+  # These do not require anything from the `Request`, but it's nice
+  # to have `@redirect` instead of `dogeweb.response.redirect`, isn't it?
+  abort    = staticmethod response.abort
+  redirect = staticmethod response.redirect
+  static   = staticmethod response.static
+  jsonify  = staticmethod response.jsonify

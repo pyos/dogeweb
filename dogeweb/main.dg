@@ -43,17 +43,13 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
   #: handle_request :: RawRequestMessage DataQueue -> coroutine a
   #:
   handle_request = asyncio.coroutine $ message payload ~>
-    proto = 'http'
-    for (k, v) in message.headers => if k == 'UPGRADE' => proto = v
-
     data = b''
-    while proto == 'http' => except
-      err         => chunk = yield from payload.read!
-      err is None => data += chunk
+    while True => except
+      err => data += yield from payload.read!
       err :: aiohttp.EofStream => break!
 
-    req   = request.Request message data self @handler
-    resp1 = except
+    req  = request.Request message data self @handler
+    resp = except
       outer => except
         # Layer 1. Call into the default handler.
         inner => yield from $ response.responsify $ @handler req
@@ -73,12 +69,11 @@ Protocol = subclass aiohttp.server.ServerHttpProtocol where
           # If *this* fails, we're doomed.
           yield from $ _safe_error req middle
 
-    resp2 = aiohttp.Response @writer resp1.code
-    resp2.add_headers *: resp1.headers.items
-    resp2.send_headers!
-    yield from $ resp1.write_to resp2
-    yield from $ resp2.write_eof!
-    resp2.keep_alive! => @keep_alive True
+    @keep_alive $ if
+      'close'      in resp.headers.get 'connection' '' => False
+      'keep-alive' in req .headers.get 'connection' '' => True
+      otherwise => req.version >= (1, 1)
+    yield from $ resp.write_all @writer req.version
 
 
 Server = subclass object where

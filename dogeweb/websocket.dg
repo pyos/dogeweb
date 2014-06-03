@@ -148,9 +148,9 @@ Response = subclass response.Response where
 
   #: Start a WebSocket session. (Will not actually write anything.)
   #:
-  #: write_to :: IOBase -> coroutine a
+  #: write_body :: (bytes -> coroutine a) -> coroutine a
   #:
-  write_to = _ ~> @handler @reader @writer
+  write_body = _ ~> @handler @reader @writer
 
 
 ContextAware = subclass object where

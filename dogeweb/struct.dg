@@ -45,6 +45,21 @@ MultiDict = subclass dict where
   #:
   getall = k ~> dict.get self k list!
 
+  #: Like `get`, but removes the item from the dict.
+  #:
+  #: pop :: a (Maybe b) -> Maybe b
+  #:
+  pop = k default: None ~>
+    ds = list' default
+    xs = dict.get self k ds or ds
+    xs.pop 0
+
+  #: Like `getall`, but removes the list from the dict.
+  #:
+  #: popall :: a -> [b]
+  #:
+  popall = k ~> dict.pop self k list!
+
   #: Iterate over all keys/values in this dict. May yield the same key
   #: multiple times.
   #:
@@ -83,7 +98,9 @@ Headers = subclass MultiDict where
   __setitem__ = k v    ~> MultiDict.__setitem__ self (@normalize k) v
   setdefault  = k v    ~> MultiDict.setdefault  self (@normalize k) v
   get         = k *: a ~> MultiDict.get         self (@normalize k) *: a
+  pop         = k *: a ~> MultiDict.pop         self (@normalize k) *: a
   getall      = k      ~> MultiDict.getall      self (@normalize k)
+  popall      = k      ~> MultiDict.popall      self (@normalize k)
   normalize = staticmethod $ k -> str.lower $ k.replace '_' '-'
 
 

@@ -2,8 +2,6 @@ import '/re'
 import '/functools'
 import '/itertools'
 
-import 'response'
-
 
 #: Syntax for wildcards.
 #:

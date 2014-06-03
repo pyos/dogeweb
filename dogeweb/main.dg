@@ -5,8 +5,6 @@ import '/asyncio/CancelledError'
 
 import '/aiohttp'
 import '/aiohttp/server'   qualified
-import '/aiohttp/parsers'  qualified
-import '/aiohttp/protocol' qualified
 
 import 'request'
 import 'response'

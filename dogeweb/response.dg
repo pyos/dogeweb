@@ -4,9 +4,6 @@ import '/asyncio'
 import '/mimetypes'
 import '/http/client/responses'
 
-import '/aiohttp'
-import '/aiohttp/websocket' qualified
-
 import 'struct'
 
 

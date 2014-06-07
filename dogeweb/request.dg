@@ -54,11 +54,10 @@ Request = subclass route.ContextAware websocket.ContextAware where
     encoding = _mcache $ _ -> struct.AcceptEncoding $ http.accept $ @headers.get 'accept-encoding'
     (subclass object)!
 
-  _body   = _mcache $ ~> list $ http.body @payload @headers
   cookies = _mcache $ ~> dict $ http.cookies $ @headers.getall 'cookie'
   args    = _mcache $ ~> struct.MultiDict $ http.query @query
-  form    = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: str) @_body
-  files   = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @_body
+  form    = _mcache $ ~> struct.MultiDict $ http.body @payload @headers or list!
+  files   = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @form.items
   isxhr   = _mcache $ ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
   isjson  = _mcache $ ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'
   address = _mcache $ ~> @headers.get 'x-forwarded-for' or

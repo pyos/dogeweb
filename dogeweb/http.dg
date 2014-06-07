@@ -1,4 +1,5 @@
 import '/cgi'
+import '/json'
 import '/urllib/parse/unquote'
 
 import 'struct'
@@ -35,7 +36,7 @@ cookies = xs encoding: 'utf-8' -> for x in xs => yield from $ query x encoding '
 #: Parse an HTTP request payload, which is either `application/x-www-urlencoded'
 #: or `multipart/form-data`.
 #:
-#: body :: bytes Headers -> iter (str, Either str File)
+#: body :: bytes Headers -> Maybe (iter (str, object))
 #:
 body = data headers ->
   # TODO Content-Transfer-Encoding
@@ -44,10 +45,23 @@ body = data headers ->
   encoding    = args.get 'charset'  'utf-8'
   boundary    = args.get 'boundary' None
   if ctype == 'application/x-www-form-urlencoded' => query (data.decode encoding) encoding
-     ctype == 'multipart/form-data' => if
-       boundary is None => list!  # bad request
-       otherwise        => multipart data boundary encoding
-     otherwise => list!
+     ctype == 'multipart/form-data' and boundary  => multipart data boundary encoding
+     ctype == 'application/json'                  => jsonform $ data.decode encoding
+     otherwise => None
+
+
+#: Convert a valid JSON object into a `MultiDict`-able iterator.
+#:
+#: jsonform :: str -> iter (str, object)
+#:
+jsonform = xs ->
+  data = json.loads xs object_hook:
+    x -> struct.MultiDict $
+      where for (k, v) in x.items! => if
+        v :: list => for sv in v => yield (k, sv)
+        otherwise => yield (k, v)
+  if data :: dict => data.items
+     otherwise    => None
 
 
 #: Parse an application/x-www-urlencoded parameter map.
@@ -118,6 +132,9 @@ multipart = data boundary encoding: 'utf-8' ->
     disp, attrs = cgi.parse_header $ head.get 'Content-Disposition' ''
     name  = attrs.get 'name'     None
     fname = attrs.get 'filename' None
-    name => yield $ body content head or if
-      fname is None => name, content.decode encoding
-      otherwise     => name, struct.File fname content
+    xdata = body content head
+    if name  is None => yield from $ xdata or list!
+       xdata is None => yield $ if
+         fname is None => (name, content.decode encoding)
+         otherwise     => (name, struct.File fname content)
+       otherwise => yield (name, struct.MultiDict xdata)

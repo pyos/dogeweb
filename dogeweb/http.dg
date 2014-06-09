@@ -153,3 +153,33 @@ multipart = data boundary encoding: 'utf-8' ->
          fname is None => (name, content.decode encoding)
          otherwise     => (name, struct.File fname content)
        otherwise => yield (name, struct.MultiDict xdata)
+
+
+#: Read an HTTP request from an async stream protocol.
+#:
+#:   data = status '\r\n' (header '\r\n')* '\r\n' body
+#:   body = <either gzip | deflate | raw>
+#:
+#: io_request :: Protocol -> coroutine (str, str, (int, int), Headers, bytes)
+#:
+io_request = proto ->
+  lines = list!
+  while (x = yield from proto.reader.readline!) != b'\r\n' =>
+    x.endswith b'\r\n' or raise ValueError
+    x = x !! slice None -2
+    lines.append $ x.decode 'iso-8859-1'
+  _status  = status  $ lines.pop 0
+  _headers = headers $ lines
+  _payload = b''  # TODO
+
+  # NOTE `Sec-WebSocket-Key1` implies `Content-Length` of 8.
+  #      This is an old standard, however; `.websocket` does not support it.
+  body_length   = _headers.get 'content-length'    '-1'
+  body_encoding = _headers.get 'content-encoding'  'plain'
+  body_transfer = _headers.get 'transfer-encoding' ''
+
+  #_payload = if
+  #  body_transfer == 'chunked' => yield from $ io_payload_cunked proto
+  #  body_
+
+  _status + (_headers, _payload)

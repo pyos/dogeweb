@@ -1,77 +1,89 @@
-import '/traceback'
+import '/socket'
+import '/logging'
 
 import '/asyncio'
+import '/asyncio/TimeoutError'
 import '/asyncio/CancelledError'
+import '/asyncio/IncompleteReadError'
 
-import '/aiohttp'
-import '/aiohttp/server'   qualified
-
+import 'http'
 import 'request'
 import 'response'
 import 'response/Abort'
 
-
-#: The default error handler. Do not use it. EVER.
-#:
-#: _safe_error :: Request Abort -> coroutine Response
-#:
-_safe_error = asyncio.coroutine $ err ~>
-  if err.code == 500 =>
-    # TODO actual logging?
-    print '------------ FIX THIS.'
-    traceback.print_exception (type err) err err.__traceback__
-    print '------------ FIX THAT.'
-  response.Response err.code err.headers $ b'Error ' + (str err.code).encode 'ascii' + b'\r\n'
+SOCKET_KEEPALIVE = hasattr socket 'SO_KEEPALIVE'
 
 
-Protocol = subclass aiohttp.server.ServerHttpProtocol where
-  #: An extension of the HTTP async protocol that parses everything it can,
-  #: then calls an asyncio coroutine.
-  #:
-  #: handler :: Request       -> object -- a function that creates something `responsify`able.
-  #: onerror :: Request Abort -> object -- a separate handler called in case of an HTTP error.
-  #:
-  __init__ = handler onerror *: a **: k ~>
+Protocol = subclass asyncio.streams.StreamReaderProtocol where
+  __init__ = handler onerror timeout: 30 loop: None ~>
     @handler = handler
-    @onerror = onerror or _safe_error
-    (super Protocol self).__init__ *: a **: k
+    @onerror = onerror or @error
+    @timeout = timeout
+    @loop    = loop or asyncio.get_event_loop!
+    @log     = logging.getLogger $ 'dogeweb.protocol.{}'.format $ id self
+    @task    = None
+    (super Protocol self).__init__ (asyncio.streams.StreamReader loop: loop) @connected loop: loop
 
-  #: Do all that stuff.
+  connected = reader writer ~>
+    @reader    = reader
+    @writer    = writer
+    @transport = writer.transport
+    @task      = asyncio.async @start loop: @loop
+
+    SOCKET_KEEPALIVE =>
+      sock = @writer.transport.get_extra_info 'socket'
+      sock.setsockopt socket.SOL_SOCKET socket.SO_KEEPALIVE 2
+
+  start = ~>
+    close = False
+    while not close => except
+      err =>
+        reqd  = yield from $ asyncio.wait_for timeout: @timeout $ http.io_request self
+        req   = request.Request self *: reqd
+        resp  = except
+          outer => except
+            # Layer 1. Call into the default handler.
+            inner => yield from $ response.responsify $ @handler req
+            inner :: Abort          => raise inner
+            inner :: CancelledError => raise inner
+            inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.
+          outer :: CancelledError => raise outer
+          outer :: Abort          => except
+            middle => except
+              # Layer 2. The default handler failed or raised an HTTP error.
+              #          Call into the error handler.
+              inner => yield from $ response.responsify $ @onerror req outer
+              inner :: Abort     => raise inner
+              inner :: Exception => req.abort 500
+            middle :: Abort =>
+              # Layer 3. The error handler FAILED TOO. Use a safe default.
+              # If *this* fails, we're doomed.
+              yield from $ @error req middle
+        close = if
+          'close'      in resp.headers.get 'connection' '' => True
+          'close'      in req .headers.get 'connection' '' => True
+          'keep-alive' in req .headers.get 'connection' '' => False
+          otherwise => req.version < (1, 1)
+        yield from $ resp.write_all @writer req.version
+      err :: IncompleteReadError => @log.debug 'disconnected or bad request'
+      err :: ConnectionError     => @log.debug 'connection failure (tcp keepalive timeout?)'
+      err :: CancelledError      => @log.debug 'cancelled'
+      err :: TimeoutError        => @log.debug 'keep-alive timeout'
+      err :: ValueError          => @log.debug 'bad request'
+      err :: Exception           => @log.exception 'failed to handle a request'
+      finally                    => close |= bool err
+    @transport.close!
+
+  #: The default error handler. Do not use it. EVER.
   #:
-  #: handle_request :: RawRequestMessage DataQueue -> coroutine a
+  #: error :: Request Abort -> Response
   #:
-  handle_request = asyncio.coroutine $ message payload ~>
-    data = b''
-    while True => except
-      err => data += yield from payload.read!
-      err :: aiohttp.EofStream => break!
-
-    req  = request.Request message data self @handler
-    resp = except
-      outer => except
-        # Layer 1. Call into the default handler.
-        inner => yield from $ response.responsify $ @handler req
-        inner :: Abort          => raise inner
-        inner :: CancelledError => raise inner
-        inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.
-      outer :: CancelledError => raise outer
-      outer :: Abort          => except
-        middle => except
-          # Layer 2. The default handler failed or raised an HTTP error.
-          #          Call into the error handler.
-          inner => yield from $ response.responsify $ @onerror req outer
-          inner :: Abort     => raise inner
-          inner :: Exception => req.abort 500
-        middle :: Abort =>
-          # Layer 3. The error handler FAILED TOO. Use a safe default.
-          # If *this* fails, we're doomed.
-          yield from $ _safe_error req middle
-
-    @keep_alive $ if
-      'close'      in resp.headers.get 'connection' '' => False
-      'keep-alive' in req .headers.get 'connection' '' => True
-      otherwise => req.version >= (1, 1)
-    yield from $ resp.write_all @writer req.version
+  error = req err ~>
+    if err.code == 500 =>
+      orig = err.__context__
+      info = type orig, orig, orig.__traceback__  # Python's exception handling is stupid.
+      @protocol.log.error 'failed to handle a request' exc_info: info
+    response.Response err.code err.headers $ b'Error ' + (str err.code).encode 'ascii' + b'\r\n'
 
 
 Server = subclass object where
@@ -80,11 +92,10 @@ Server = subclass object where
   #: handler :: typeof Protocol.handler
   #: onerror :: typeof Protocol.onerror
   #:
-  __init__ = handler onerror: _safe_error **: kwargs  ~>
+  __init__ = handler onerror: None **: kwargs  ~>
     @handler = handler
     @onerror = onerror
     @kwargs  = kwargs
-    @kwargs.setdefault 'keep_alive' 30
     None
 
   #: Create a new connection factory.

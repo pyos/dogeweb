@@ -1,5 +1,6 @@
 import '/cgi'
 import '/json'
+import '/zlib'
 import '/urllib/parse/unquote'
 
 import 'struct'
@@ -170,16 +171,36 @@ io_request = proto ->
     lines.append $ x.decode 'iso-8859-1'
   _status  = status  $ lines.pop 0
   _headers = headers $ lines
-  _payload = b''  # TODO
-
   # NOTE `Sec-WebSocket-Key1` implies `Content-Length` of 8.
   #      This is an old standard, however; `.websocket` does not support it.
-  body_length   = _headers.get 'content-length'    '-1'
-  body_encoding = _headers.get 'content-encoding'  'plain'
-  body_transfer = _headers.get 'transfer-encoding' ''
-
-  #_payload = if
-  #  body_transfer == 'chunked' => yield from $ io_payload_cunked proto
-  #  body_
-
+  body_length   = _headers.get 'content-length'
+  body_encoding = _headers.get 'content-encoding'
+  body_transfer = _headers.get 'transfer-encoding'
+  _payload = if
+    body_transfer == 'chunked' => yield from $ io_payload_chunked proto
+    body_length                => yield from $ proto.reader.readexactly $ int body_length
+    otherwise                  => b''
+  _payload = if
+    body_encoding == 'deflate' => zlib.decompress _payload 15
+    body_encoding == 'gzip'    => zlib.decompress _payload 31
+    otherwise                  => _payload
   _status + (_headers, _payload)
+
+
+#: Read chunked HTTP body from an async stream protocol.
+#:
+#:   body   = (length (';' chunk-extension)? '\r\n' data '\r\n')* '0\r\n\r\n'
+#:   length = <hex != 0>
+#:
+#: io_payload_chunked :: Protocol -> coroutine bytes
+#:
+io_payload_chunked = proto ->
+  data = b''
+  while True =>
+    line   = yield from $ proto.reader.readline!
+    length = int ((line.decode 'ascii').partition ';' !! 0) 16
+    length == 0 => break!
+    data  += yield from $ proto.reader.readexactly length
+    yield from (proto.reader.readexactly 2) != b'\r\n' => raise ValueError
+  yield from $ proto.reader.readline!
+  data

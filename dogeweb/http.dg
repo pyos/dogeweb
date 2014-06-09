@@ -156,16 +156,16 @@ multipart = data boundary encoding: 'utf-8' ->
        otherwise => yield (name, struct.MultiDict xdata)
 
 
-#: Read an HTTP request from an async stream protocol.
+#: Read an HTTP request from an async stream.
 #:
 #:   data = status '\r\n' (header '\r\n')* '\r\n' body
 #:   body = <either gzip | deflate | raw>
 #:
-#: io_request :: Protocol -> coroutine (str, str, (int, int), Headers, bytes)
+#: io_request :: StreamReader -> coroutine (str, str, (int, int), Headers, bytes)
 #:
-io_request = proto ->
+io_request = reader ->
   lines = list!
-  while (x = yield from proto.reader.readline!) != b'\r\n' =>
+  while (x = yield from reader.readline!) != b'\r\n' =>
     x.endswith b'\r\n' or raise ValueError
     x = x !! slice None -2
     lines.append $ x.decode 'iso-8859-1'
@@ -177,8 +177,8 @@ io_request = proto ->
   body_encoding = _headers.get 'content-encoding'
   body_transfer = _headers.get 'transfer-encoding'
   _payload = if
-    body_transfer == 'chunked' => yield from $ io_payload_chunked proto
-    body_length                => yield from $ proto.reader.readexactly $ int body_length
+    body_transfer == 'chunked' => yield from $ io_payload_chunked reader
+    body_length                => yield from $ reader.readexactly $ int body_length
     otherwise                  => b''
   _payload = if
     body_encoding == 'deflate' => zlib.decompress _payload 15
@@ -187,20 +187,20 @@ io_request = proto ->
   _status + (_headers, _payload)
 
 
-#: Read chunked HTTP body from an async stream protocol.
+#: Read chunked HTTP body from an async stream.
 #:
 #:   body   = (length (';' chunk-extension)? '\r\n' data '\r\n')* '0\r\n\r\n'
 #:   length = <hex != 0>
 #:
-#: io_payload_chunked :: Protocol -> coroutine bytes
+#: io_payload_chunked :: StreamReader -> coroutine bytes
 #:
-io_payload_chunked = proto ->
+io_payload_chunked = reader ->
   data = b''
   while True =>
-    line   = yield from $ proto.reader.readline!
+    line   = yield from $ reader.readline!
     length = int ((line.decode 'ascii').partition ';' !! 0) 16
     length == 0 => break!
-    data  += yield from $ proto.reader.readexactly length
-    yield from (proto.reader.readexactly 2) != b'\r\n' => raise ValueError
-  yield from $ proto.reader.readline!
+    data  += yield from $ reader.readexactly length
+    yield from (reader.readexactly 2) != b'\r\n' => raise ValueError
+  yield from $ reader.readline!
   data

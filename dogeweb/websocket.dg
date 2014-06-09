@@ -1,10 +1,7 @@
-# Because `aiohttp.websocket` handles text awfully.
+import '/asyncio'
 import '/base64'
 import '/hashlib'
 import '/itertools'
-
-import '/asyncio'
-import '/aiohttp'
 
 import 'response'
 
@@ -24,9 +21,9 @@ LONG  = 0xFFFFFFFFFFFFFFFF
 
 #: ???
 #:
-#: parse :: DataQueue AsyncIOBase -> coroutine NoneType
+#: parse :: StreamReader -> coroutine Message
 #:
-parse = asyncio.coroutine $ buf ~> while True =>
+parse = buf ->
   fin, code, *data = yield from $ parse_frame buf
 
   while not fin =>
@@ -35,20 +32,19 @@ parse = asyncio.coroutine $ buf ~> while True =>
     data.append part
   data = b''.join data
 
-  @feed_data $ if
-    code != CLOSE => Message code data None
-    otherwise     =>
-      code = data !! slice None 2
-      rest = data !! slice 2 None
-      Message CLOSE rest (int.from_bytes code 'big')
+  if code != CLOSE => Message code data None
+     otherwise     =>
+       code = data !! slice None 2
+       rest = data !! slice 2 None
+       Message CLOSE rest (int.from_bytes code 'big')
 
 
 #: ???
 #:
-#: parse_frame :: AsyncIOBase -> coroutine (int, int, bytes)
+#: parse_frame :: StreamReader -> coroutine (int, int, bytes)
 #:
-parse_frame = asyncio.coroutine $ buf ->
-  head = yield from $ buf.read 2
+parse_frame = buf ->
+  head = yield from $ buf.readexactly 2
   head = int.from_bytes head 'big'
 
   # fin -- 0 if more frames from the same message follow.
@@ -64,16 +60,16 @@ parse_frame = asyncio.coroutine $ buf ->
   code > 0x7 and length > 125 => raise $ Error => 'control frame payload length invalid'
 
   length = if
-    length == 126 => int.from_bytes (yield from $ buf.read 2) 'big'
-    length == 127 => int.from_bytes (yield from $ buf.read 8) 'big'
+    length == 126 => int.from_bytes (yield from $ buf.readexactly 2) 'big'
+    length == 127 => int.from_bytes (yield from $ buf.readexactly 8) 'big'
     otherwise     => length
 
   mask = itertools.cycle $ if
-    masked    => yield from $ buf.read 4
+    masked    => yield from $ buf.readexactly 4
     otherwise => 0, 0, 0, 0
 
   fin, code, bytes $ map (^) mask $ if
-    length    => yield from $ buf.read length
+    length    => yield from $ buf.readexactly length
     otherwise => b''
 
 
@@ -92,29 +88,29 @@ Message = subclass bytes where
 
 
 Reader = subclass object where
-  __init__ = self @queue @writer ->
+  __init__ = self @reader @writer ->
   __iter__ = self -> self
-  __next__ = self -> @_read!
-  _read = asyncio.coroutine $ self -> while True =>
+  __next__ = self -> while True =>
     msg = except
-      err => yield from @queue.read!
-      err :: aiohttp.EofStream => raise $ GeneratorExit $ Message CLOSE b'' -1
-    if msg.is_ping  => @writer.pong
+      err => yield from $ parse @reader
+      err :: asyncio.IncompleteReadError => raise $ GeneratorExit $ Message CLOSE b'' -1
+    if msg.is_ping  => yield from @writer.pong
        msg.is_close => raise $ GeneratorExit msg
        otherwise    => raise $ StopIteration msg
 
 
 Writer = subclass object where
-  __init__ = @transport ~>
+  __init__ = @writer ~>
   _head    = code ln   ~> bytes (((code != CONT) << 7) | code, ln)
   _frame   = code data ~>
     ln = len data
-    if ln <= 125   => @transport.write $ @_head code ln + data
-       ln <= SHORT => @transport.write $ @_head code 126 + ln.to_bytes 2 'big' + data
-       ln <= LONG  => @transport.write $ @_head code 127 + ln.to_bytes 8 'big' + data
+    if ln <= 125   => @writer.write $ @_head code ln + data
+       ln <= SHORT => @writer.write $ @_head code 126 + ln.to_bytes 2 'big' + data
+       ln <= LONG  => @writer.write $ @_head code 127 + ln.to_bytes 8 'big' + data
        otherwise =>
          @_frame code $ data !! slice None LONG
          @_frame CONT $ data !! slice LONG None
+    yield from @writer.drain!
 
   ping  = data ~> @_frame PING data
   pong  = data ~> @_frame PONG data
@@ -129,11 +125,10 @@ Response = subclass response.Response where
   #: key     :: str -- `Sec-WebSocket-Key` of the request.
   #: handler :: Reader Writer -> coroutine a
   #:
-  __init__ = key handler reader writer ~>
-    @handler = asyncio.coroutine handler
-    @reader  = reader
-    @writer  = writer
-    @key     = key
+  __init__ = key handler protocol ~>
+    @handler  = asyncio.coroutine handler
+    @protocol = protocol
+    @key      = key
     response.Response.__init__ self 101 dict! b''
 
   #: WebSocket handshake headers.
@@ -150,7 +145,11 @@ Response = subclass response.Response where
   #:
   #: write_body :: (bytes -> coroutine a) -> coroutine a
   #:
-  write_body = _ ~> @handler @reader @writer
+  write_body = _ ~>
+    @protocol.log.debug 'switching to WebSocket mode'
+    writer = Writer @protocol.writer
+    reader = Reader @protocol.reader writer
+    @handler reader writer
 
 
 ContextAware = subclass object where
@@ -170,7 +169,4 @@ ContextAware = subclass object where
        not $ (except
          err => len (base64.b64decode key) == 16
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'
-
-    writer = Writer  @protocol.transport
-    reader = Reader (@protocol.reader.set_parser parse) writer
-    Response key handler reader writer
+    Response key handler @protocol

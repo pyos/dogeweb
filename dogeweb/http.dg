@@ -5,6 +5,39 @@ import '/urllib/parse/unquote'
 import 'struct'
 
 
+#: Parse an HTTP/1.{0,1} status line.
+#:
+#:   status  = method ' ' path ' ' version
+#:   version = 'HTTP/1.' int10
+#:
+#: status :: str -> (str, str, (int, int))
+#:
+status = line ->
+  method, _, rest  = line.partition ' '
+  path, _, version = rest.partition ' '
+  version.startswith 'HTTP/1.' or raise ValueError
+  version = 1, int $ version !! slice 7 None
+  method, path, version
+
+
+#: Parse a list of HTTP headers.
+#:
+#:   header = first_line continuation*
+#:   first_line   = name ':' value
+#:   continuation = (' ' | '\t') value
+#:
+#: headers :: [str] -> Headers
+#:
+headers = lines -> struct.Headers
+  where for (i, line) in enumerate lines 1 => if
+    line !! 0 in ' \t' =>  # a continuation line; has already been consumed.
+    not $ ':' in line  =>  # not a valid header
+    otherwise =>
+      line += ''.join $ takewhile (x -> x and x !! 0 in ' \t') $ drop i lines
+      n, v  = line.split ':' 1
+      yield (n.strip!, v.strip!)
+
+
 #: Parse an `Accept` HTTP header.
 #:
 #:   header = entry (',' entry)*
@@ -79,24 +112,6 @@ query = xs encoding: 'utf-8' sep: '&' space: '+' ->
       unquote (v.replace space ' ').strip! encoding
 
 
-#: Parse a list of HTTP headers.
-#:
-#:   header = first_line continuation*
-#:   first_line   = name ':' value
-#:   continuation = (' ' | '\t') value
-#:
-#: headers :: [bytes] -> Headers
-#:
-headers = lines encoding: 'iso-8859-1' -> struct.Headers
-  where for (i, line) in enumerate lines 1 => if
-    line !! 0 in b' \t' =>  # a continuation line; has already been consumed.
-    not $ b':' in line  =>  # not a valid header
-    otherwise =>
-      line += b''.join $ takewhile (x -> x and x !! 0 in b' \t') $ drop i lines
-      n, v  = line.split b':' 1
-      yield (n.strip!.decode encoding, v.strip!.decode encoding)
-
-
 #: Parse (nested) multipart/form-data.
 #:
 #:   value    = (data '\r\n')? ('--' boundary '\r\n' part '\r\n')* '--' boundary '--'
@@ -127,7 +142,7 @@ multipart = data boundary encoding: 'utf-8' ->
     head    = data !! slice None start
     content = data !! slice (start + 4) finish
     data    = data !! slice (finish + len sep) None
-    head    = headers $ head.split b'\r\n'
+    head    = headers $ (head.decode 'iso-8859-1').split '\r\n'
 
     disp, attrs = cgi.parse_header $ head.get 'Content-Disposition' ''
     name  = attrs.get 'name'     None

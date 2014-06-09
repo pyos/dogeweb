@@ -46,7 +46,7 @@ Abort = subclass Exception where
 
 
 Writer = subclass object where
-  __init__ = @transport ~>
+  __init__ = @writer ~>
   # This method provides compatibility with asyncio transports.
   # It shouldn't do anything; instead, `write` should drain on every call.
   drain = asyncio.coroutine $ self -> None
@@ -55,22 +55,21 @@ Writer = subclass object where
 
 SimpleWriter = subclass Writer where
   write = data ~>
-    @transport.write data
-    @transport.drain!
+    @writer.write data
+    @writer.drain!
 
 
 ChunkWriter = subclass Writer where
   write = data ~>
-    data =>
-      ln = hex $ len data
-      ln = ln.encode 'ascii'
-      ln = ln.lstrip b'0x'
-      @transport.write $ ln + b'\r\n' + data + b'\r\n'
-      @transport.drain!
+    ln = hex $ len data
+    ln = ln.encode 'ascii'
+    ln = ln.lstrip b'0x'
+    @writer.write $ ln + b'\r\n' + data + b'\r\n'
+    @writer.drain!
 
   close = self ->
-    @transport.write b'0\r\n\r\n'
-    @transport.drain!
+    @writer.write b'0\r\n\r\n'
+    @writer.drain!
 
 
 Response = subclass object where

@@ -11,5 +11,4 @@ setup(
     packages=['dogeweb'],
     package_dir={'dogeweb': 'dogeweb'},
     package_data={'dogeweb': ['*.dg']},
-    install_requires=['aiohttp'],
 )

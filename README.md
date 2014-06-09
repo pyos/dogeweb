@@ -1,6 +1,6 @@
 ## dogeweb
 
-asyncio + [aiohttp](https://github.com/KeepSafe/aiohttp) + anonymous functions + [the best language ever](https://pyos.github.io/dg/).
+asyncio + anonymous functions + [the best language ever](https://pyos.github.io/dg/).
 
 ### Usage
 

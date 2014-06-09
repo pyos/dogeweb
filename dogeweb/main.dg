@@ -82,7 +82,7 @@ Protocol = subclass asyncio.streams.StreamReaderProtocol where
     if err.code == 500 =>
       orig = err.__context__
       info = type orig, orig, orig.__traceback__  # Python's exception handling is stupid.
-      @protocol.log.error 'failed to handle a request' exc_info: info
+      @log.error 'failed to handle a request' exc_info: info
     response.Response err.code err.headers $ b'Error ' + (str err.code).encode 'ascii' + b'\r\n'
 
 

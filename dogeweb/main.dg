@@ -80,4 +80,15 @@ Server = subclass object where
   #:
   error = req err ~>
     err.code == 500 => @log.error 'unhandled error' exc_info: 1
-    err.code, err.headers, 'Error {}\r\n'.format err.code
+    err.code, err.headers, '''<!doctype html>
+      <html>
+        <head>
+          <title>{0.code} — {0.name}</title>
+          <style>p[data-has-url="False"] {{ display: none; }}</style>
+        </head>
+        <body>
+          <h1>{0.code} {0.name}</h1>
+          <p>{0.description}</p>
+          <p data-has-url="{1}">Though <a href="{2}">a different URL</a> is available.</p>
+        </body>
+      </html>'''.format err ('location' in err.headers) (err.headers.get 'location')

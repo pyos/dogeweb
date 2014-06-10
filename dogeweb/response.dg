@@ -9,18 +9,21 @@ import 'struct'
 
 #: Convert an arbitrary object into a response.
 #:
-#: Currently supported are strings (simple HTML responses in UTF-8),
-#: actual `Response`s, and `(code, responsifyable)` tuples, as well as coroutines
+#: Currently supported are strings and bytes (simple HTML responses in UTF-8), actual
+#: `Response`s, and `(code, [headers,] responsifyable)` tuples, as well as coroutines
 #: that return them.
 #:
 #: responsify :: object -> coroutine Response
 #:
 responsify = asyncio.coroutine $ smth -> if
   smth :: Response => smth
+  smth :: bytes    => Response 200 () smth
   smth :: str      => Response 200 () $ smth.encode 'utf-8'
   smth :: tuple    =>
-    r = yield from $ responsify $ snd smth
-    r.code = fst smth
+    code, *headers, smth = smth
+    r = yield from $ responsify $ smth
+    r.code = code
+    exhaust $ map r.headers.replace headers
     r
   otherwise => yield from $ responsify $ yield from smth
 

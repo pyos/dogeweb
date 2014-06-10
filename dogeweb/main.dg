@@ -15,10 +15,11 @@ SOCKET_KEEPALIVE = hasattr socket 'SO_KEEPALIVE'
 
 
 Server = subclass object where
-  __init__ = handler onerror: None timeout: 5 ~>
+  __init__ = handler onerror: None timeout: 15 ~>
     @timeout = timeout
     @handler = handler
     @onerror = onerror or @error
+    @log     = logging.getLogger 'dogeweb'
     None
 
   #: Synchronously start a server. See `asyncio.start_server` for arguments.
@@ -37,59 +38,46 @@ Server = subclass object where
   #:
   #: () :: EventLoop * ** -> coroutine AbstractServer
   #:
-  __call__ = loop *: a **: k ~> asyncio.start_server loop: loop *: a **: k $ reader writer ->
-    SOCKET_KEEPALIVE =>
-      sock = writer.transport.get_extra_info 'socket'
-      sock.setsockopt socket.SOL_SOCKET socket.SO_KEEPALIVE 2
+  __call__ = loop *: a **: k ~> asyncio.start_server loop: loop *: a **: k $ reader writer -> except
+    err =>
+      SOCKET_KEEPALIVE =>
+        sock = writer.transport.get_extra_info 'socket'
+        sock.setsockopt socket.SOL_SOCKET socket.SO_KEEPALIVE 1
 
-    log   = logging.getLogger 'dogeweb'
-    close = False
-    while not close => except
-      err =>
-        reqd  = yield from $ asyncio.wait_for timeout: @timeout $ http.io_request reader
-        req   = request.Request @handler reader writer log *: reqd
-        resp  = except
+      while True =>
+        req = request.Request @handler reader writer @log *:
+          except
+            e2 => yield from $ asyncio.wait_for timeout: @timeout $ http.io_request reader
+            e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
+            e2 :: TimeoutError        => raise CancelledError
+            e2 :: IncompleteReadError => raise CancelledError
+
+        resp = except
           outer => except
-            # Layer 1. Call into the default handler.
             inner => yield from $ response.responsify $ @handler req
             inner :: Abort          => raise inner
             inner :: CancelledError => raise inner
             inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.
-          outer :: CancelledError => raise outer
-          outer :: Abort          => except
+          outer :: Abort => except
             middle => except
-              # Layer 2. The default handler failed or raised an HTTP error.
-              #          Call into the error handler.
               inner => yield from $ response.responsify $ @onerror req outer
-              inner :: Abort     => raise inner
-              inner :: Exception => req.abort 500
-            middle :: Abort =>
-              # Layer 3. The error handler FAILED TOO. Use a safe default.
-              # If *this* fails, we're doomed.
-              yield from $ @error req middle
-        close = if
-          'close'      in resp.headers.get 'connection' '' => True
-          'close'      in req .headers.get 'connection' '' => True
-          'keep-alive' in req .headers.get 'connection' '' => False
-          otherwise => req.version < (1, 1) or 'upgrade' in resp.headers
+              inner :: Abort          => raise inner
+              inner :: CancelledError => raise inner
+              inner :: Exception      => req.abort 500
+            middle :: Abort => yield from $ response.responsify $ @error req middle
+
         yield from $ http.io_response writer req.version resp.code resp.headers resp.data
         yield from $ resp.communicate reader writer
-      err :: IncompleteReadError => log.debug 'disconnected'
-      err :: ConnectionError     => log.debug 'connection failure (tcp keepalive timeout?)'
-      err :: CancelledError      => log.debug 'cancelled'
-      err :: TimeoutError        => log.debug 'keep-alive timeout'
-      err :: ValueError          => log.debug 'disconnected or bad request'
-      err :: Exception           => log.exception 'failed to handle a request'
-      finally                    => close |= bool err
-    writer.transport.close!
+        close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
+                'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers
+        close => raise CancelledError
+    err :: ConnectionError =>
+    finally                => writer.close!
 
   #: The default error handler. Do not use it. EVER.
   #:
   #: error :: Request Abort -> Response
   #:
   error = req err ~>
-    if err.code == 500 and err.__context__ =>
-      orig = err.__context__
-      info = type orig, orig, orig.__traceback__  # Python's exception handling is stupid.
-      req.log.error 'failed to handle a request' exc_info: info
-    response.Response err.code err.headers $ ('Error {}\r\n'.format err.code).encode 'ascii'
+    err.code == 500 => @log.error 'unhandled error' exc_info: 1
+    err.code, err.headers, 'Error {}\r\n'.format err.code

@@ -3,6 +3,7 @@ import '/json'
 import '/zlib'
 import '/urllib/parse/unquote'
 import '/http/client/responses'
+import '/asyncio/IncompleteReadError'
 
 import 'struct'
 
@@ -167,7 +168,7 @@ multipart = data boundary encoding: 'utf-8' ->
 io_request = reader ->
   lines = list!
   while (x = yield from reader.readline!) != b'\r\n' =>
-    x.endswith b'\r\n' or raise ValueError
+    x.endswith b'\r\n' or raise (IncompleteReadError x -1)
     x = x !! slice None -2
     lines.append $ x.decode 'iso-8859-1'
   _status  = status  $ lines.pop 0

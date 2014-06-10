@@ -152,7 +152,7 @@ Response = subclass response.Response where
 ContextAware = subclass object where
   #: Create a WebSocket from this request.
   #:
-  #: websocket :: (-> a) -> WSResponse
+  #: websocket :: (Reader Writer -> coroutine a) -> Response
   #:
   websocket = handler ~>
     if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')

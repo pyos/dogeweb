@@ -95,7 +95,7 @@ jsonform = xs ->
       where for (k, v) in x.items! => if
         v :: list => for sv in v => yield (k, sv)
         otherwise => yield (k, v)
-  if data :: dict => data.items
+  if data :: dict => data.items!
      otherwise    => None
 
 
@@ -212,7 +212,7 @@ io_payload_chunked = reader ->
 #: io_response :: StreamWriter (int, int) int Headers (iter bytes) -> coroutine a
 #:
 io_response = writer (major, minor) code headers body ->
-  h = '\r\n'.join $ map ': '.join headers.items
+  h = '\r\n'.join $ map ': '.join headers.items!
   h = 'HTTP/%s.%s %s %s\r\n%s\r\n\r\n' % (major, minor, code, responses.get code 'Unknown', h)
   writer.write $ h.encode 'latin-1'
   yield from writer.drain!

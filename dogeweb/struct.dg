@@ -63,13 +63,13 @@ MultiDict = subclass dict where
   #: Iterate over all keys/values in this dict. May yield the same key
   #: multiple times.
   #:
-  #: keys   :: iter a
-  #: items  :: iter (a, b)
-  #: values :: iter b
+  #: keys   :: -> iter a
+  #: items  :: -> iter (a, b)
+  #: values :: -> iter b
   #:
-  keys   = ~> for k in self => yield k
-  items  = ~> for (k, vs) in dict.items self => for v in vs => yield (k, v)
-  values = ~> for (k, vs) in dict.items self => for v in vs => yield v
+  keys   = self -> for k in self => yield k
+  items  = self -> for (k, vs) in dict.items self => for v in vs => yield (k, v)
+  values = self -> for (k, vs) in dict.items self => for v in vs => yield v
 
   #: Extend value lists with additional data.
   #:

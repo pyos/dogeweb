@@ -31,12 +31,13 @@ Request = subclass route.ContextAware websocket.ContextAware where
   #: path     :: str      -- the requested path relative to the current routing module.
   #: headers  :: Headers  -- additional HTTP headers as a dict-like object.
   #: payload  :: bytes    -- the request body.
-  #: protocol :: Protocol -- the asyncio HTTP protocol that received the response.
   #: handler  :: Handler  -- the root handler of the application this request was received by.
+  #: log      :: Logger
+  #: reader   :: StreamReader
+  #: writer   :: StreamWriter -- streams to use after HTTP Upgrade.
   #:
-  __init__ = @protocol @method path @version @headers @payload ~>
+  __init__ = @handler @reader @writer @log @method path @version @headers @payload ~>
     @path, _, @query = path.partition '?'
-    @handler         = @protocol.handler
     (super Request self).__init__!
 
   #: Values of various `Accept-*` HTTP headers as dict-like objects.
@@ -57,7 +58,7 @@ Request = subclass route.ContextAware websocket.ContextAware where
   isxhr   = _mcache $ ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
   isjson  = _mcache $ ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'
   address = _mcache $ ~> @headers.get 'x-forwarded-for' or
-    @protocol.transport.get_extra_info 'peername' (None, None) !! 0
+    @writer.transport.get_extra_info 'peername' (None, None) !! 0
 
   # These do not require anything from the `Request`, but it's nice
   # to have `@redirect` instead of `dogeweb.response.redirect`, isn't it?

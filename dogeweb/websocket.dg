@@ -125,10 +125,8 @@ Response = subclass response.Response where
   #: key     :: str -- `Sec-WebSocket-Key` of the request.
   #: handler :: Reader Writer -> coroutine a
   #:
-  __init__ = key handler protocol ~>
-    @handler  = asyncio.coroutine handler
-    @protocol = protocol
-    @key      = key
+  __init__ = handler @key @reader @writer ~>
+    @handler = asyncio.coroutine handler
     response.Response.__init__ self 101 dict! b''
 
   #: WebSocket handshake headers.
@@ -146,9 +144,8 @@ Response = subclass response.Response where
   #: write_body :: (bytes -> coroutine a) -> coroutine a
   #:
   write_body = _ ~>
-    @protocol.log.debug 'switching to WebSocket mode'
-    writer = Writer @protocol.writer
-    reader = Reader @protocol.reader writer
+    writer = Writer @writer
+    reader = Reader @reader writer
     @handler reader writer
 
 
@@ -169,4 +166,4 @@ ContextAware = subclass object where
        not $ (except
          err => len (base64.b64decode key) == 16
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'
-    Response key handler @protocol
+    Response handler key @reader @writer

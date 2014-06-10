@@ -16,7 +16,7 @@ Worker = subclass base.Worker where
 
   task = ~>
     servers = list!
-    for sock in @sockets => servers.append $ yield from $ @loop.create_server (@wsgi @loop) sock: sock
+    for sock in @sockets => servers.append $ yield from $ @wsgi @loop sock: sock
 
     except
       err => while @alive =>

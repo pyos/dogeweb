@@ -26,3 +26,6 @@ Worker = subclass base.Worker where
           break!
         yield from $ asyncio.sleep 1 loop: @loop
       err :: KeyboardInterrupt =>
+    for srv in servers =>
+      srv.close!
+      yield from srv.wait_closed!

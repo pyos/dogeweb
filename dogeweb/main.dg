@@ -113,3 +113,6 @@ Server = subclass object where
     srv  = loop.run_until_complete $ loop.create_server (self loop) host port
     except err => loop.run_forever!
            err :: KeyboardInterrupt =>
+           finally =>
+             srv.close!
+             loop.run_until_complete srv.wait_closed!

@@ -1,4 +1,6 @@
+import '/os'
 import '/asyncio'
+import '/posixpath/normpath'
 
 import '/dogeweb'
 import '/dogeweb/r'
@@ -39,10 +41,11 @@ app = dogeweb.app $ r.dir
   '/static/', ~>
     # The only requirement for `r.dir` is that the requested path starts with
     # the specified directory. The rest of the path can be anything.
-    # (NOTE: it can even contain stuff like `..`, so don't actually pass it to `@static`.)
+    # (NOTE: it can even contain stuff like `..`, so normalize it first.
+    # It always starts with `/`, so you can't go higher than that at least.)
     # The attribute `path` of a request contains the path *relative to the module*,
     # while `parent` is the path to the module itself.
-    @static $ @path.lstrip '/'
+    @static $ os.path.join (os.path.dirname __file__) $ (normpath @path).lstrip '/'
 
   '/route/', 'test_route', r.file
     # Normally, each argument to `r.dir` or `r.file` is a 2-tuple `(path, handler)`.

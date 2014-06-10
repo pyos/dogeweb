@@ -42,7 +42,8 @@ Abort = subclass Exception where
   #:
   #: ???
   #:
-  __init__ = @code @description: '' @headers: () @flags: 0 ~>
+  __init__ = @code @description: '' @headers: () ~>
+    @headers = struct.Headers @headers
     (super Abort self).__init__ @description
 
   name = ~> http.responses.get @code 'Unknown Error'
@@ -111,9 +112,9 @@ abort = code info: '' headers: () -> raise $ Abort code info headers
 
 #: Issue a 302 Found. The client is redirected to a new URL.
 #:
-#: redirect :: str (Optional str) -> a
+#: redirect :: str (Optional str) (Optional int) -> a
 #:
-redirect = path description: '' -> raise $ Abort 302 description $ dict' location: path
+redirect = path info: '' code: 302 -> raise $ Abort code info (('location', path),)
 
 
 #: Serve a single static file.

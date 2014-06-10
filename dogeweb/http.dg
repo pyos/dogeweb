@@ -2,6 +2,7 @@ import '/cgi'
 import '/json'
 import '/zlib'
 import '/urllib/parse/unquote'
+import '/http/client/responses'
 
 import 'struct'
 
@@ -204,3 +205,23 @@ io_payload_chunked = reader ->
     yield from (reader.readexactly 2) != b'\r\n' => raise ValueError
   yield from $ reader.readline!
   data
+
+
+#: Compose an HTTP response and send it through an async stream.
+#:
+#: io_response :: StreamWriter (int, int) int Headers (iter bytes) -> coroutine a
+#:
+io_response = writer (major, minor) code headers body ->
+  h = '\r\n'.join $ map ': '.join headers.items
+  h = 'HTTP/%s.%s %s %s\r\n%s\r\n\r\n' % (major, minor, code, responses.get code 'Unknown', h)
+  writer.write $ h.encode 'latin-1'
+  yield from writer.drain!
+
+  if
+    headers.get 'transfer-encoding' == 'chunked' =>
+      for chunk in body => chunk =>
+        writer.write $ ('%x\r\n' % len chunk).encode 'ascii' + chunk + b'\r\n'
+        yield from writer.drain!
+      writer.write b'0\r\n\r\n'
+    otherwise => for chunk in body => writer.write chunk
+  yield from writer.drain!

@@ -2,8 +2,8 @@ import '/os'
 import '/json'
 import '/asyncio'
 import '/mimetypes'
-import '/http/client/responses'
 
+import 'http'
 import 'struct'
 
 
@@ -42,41 +42,14 @@ Abort = subclass Exception where
   __init__ = @code @description: '' @headers: dict! @flags: 0 ~>
     (super Abort self).__init__ @description
 
-  name = ~> responses.get @code 'Unknown Error'
-
-
-Writer = subclass object where
-  __init__ = @writer ~>
-  # This method provides compatibility with asyncio transports.
-  # It shouldn't do anything; instead, `write` should drain on every call.
-  drain = asyncio.coroutine $ self -> None
-  close = asyncio.coroutine $ self -> None
-
-
-SimpleWriter = subclass Writer where
-  write = data ~>
-    @writer.write data
-    @writer.drain!
-
-
-ChunkWriter = subclass Writer where
-  write = data ~>
-    ln = hex $ len data
-    ln = ln.encode 'ascii'
-    ln = ln.lstrip b'0x'
-    @writer.write $ ln + b'\r\n' + data + b'\r\n'
-    @writer.drain!
-
-  close = self ->
-    @writer.write b'0\r\n\r\n'
-    @writer.drain!
+  name = ~> http.responses.get @code 'Unknown Error'
 
 
 Response = subclass object where
   __init__ = code headers data ~>
     @code    = code
     @headers = headers
-    @data    = data
+    @data    = list' data
     @headers = struct.Headers @defheaders
     @headers.replace headers
     None
@@ -87,32 +60,15 @@ Response = subclass object where
   #:
   defheaders = ~> dict'
     'Content-Type',   'text/html; charset=utf-8'
-    'Content-Length', str $ len @data
+    'Content-Length', str $ sum $ map len @data
     # NOTE this should be replaced with `'Transfer-Encoding', 'chunked'` if
     #      content-length could not be calculated.
 
-  #: Write the whole response into an object.
+  #: Talk to the client in some other protocol, if applicable.
   #:
-  #: write_all :: IOBase (int, int) -> coroutine a
+  #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  write_all = asyncio.coroutine $ writer version ~>
-    status  = 'HTTP/%s.%s %s %s\r\n' % (version + (@code, responses.get @code 'Unknown'))
-    headers = '\r\n'.join $ map ': '.join @headers.items
-    writer.write $ (status + headers + '\r\n\r\n').encode 'latin-1'
-
-    chunked = @headers.get 'Transfer-Encoding' == 'chunked'
-    writer  = if
-      chunked   => ChunkWriter  writer
-      otherwise => SimpleWriter writer
-
-    yield from $ @write_body writer.write
-    yield from $ writer.close!
-
-  #: Call a function with chunks that comprise the body of this response.
-  #:
-  #: write_body :: (bytes -> coroutine a) -> coroutine a
-  #:
-  write_body = cb ~> cb @data
+  communicate = asyncio.coroutine $ reader writer ~> None
 
 
 FileResponse = subclass Response where
@@ -130,18 +86,18 @@ FileResponse = subclass Response where
   #:
   #: defheaders :: dict str str
   #:
-  defheaders = ~> xs where
-    xs = dict' $ except
-      err => 'Content-Length', str (os.stat @path).st_size
-      err :: OSError => abort 404
+  defheaders = ~> dict'
+    except err => 'Content-Length', str (os.stat @path).st_size
+           err :: OSError => abort 404
+    
 
-  #: Send the contents of a file object.
+  #: The contents of a file object.
   #:
-  #: write_body :: (bytes -> coroutine a) -> coroutine a
+  #: data :: iter bytes
   #:
-  write_body = asyncio.coroutine $ cb ~>
-    # TODO make this async?
-    with fd = open @path 'rb' => while (b = fd.read @bufsize) => yield from $ cb b
+  data = property
+    self   -> with fd = open @path 'rb' => while (b = fd.read @bufsize) => yield b
+    self _ -> # Ignore `@data = ...` from `Response.__init__`.
 
 
 #: Stop the handler, return an error message.

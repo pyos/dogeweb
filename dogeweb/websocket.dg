@@ -108,8 +108,8 @@ Writer = subclass object where
        ln <= SHORT => @writer.write $ @_head code 126 + ln.to_bytes 2 'big' + data
        ln <= LONG  => @writer.write $ @_head code 127 + ln.to_bytes 8 'big' + data
        otherwise =>
-         @_frame code $ data !! slice None LONG
-         @_frame CONT $ data !! slice LONG None
+         yield from $ @_frame code $ data !! slice None LONG
+         yield from $ @_frame CONT $ data !! slice LONG None
     yield from @writer.drain!
 
   ping  = data ~> @_frame PING data
@@ -125,7 +125,7 @@ Response = subclass response.Response where
   #: key     :: str -- `Sec-WebSocket-Key` of the request.
   #: handler :: Reader Writer -> coroutine a
   #:
-  __init__ = handler @key @reader @writer ~>
+  __init__ = handler @key ~>
     @handler = asyncio.coroutine handler
     response.Response.__init__ self 101 dict! b''
 
@@ -139,13 +139,13 @@ Response = subclass response.Response where
     'Sec-WebSocket-Accept',
       (base64.b64encode (hashlib.sha1 $ @key.encode 'ascii' + GUID).digest!).decode 'ascii'
 
-  #: Start a WebSocket session. (Will not actually write anything.)
+  #: Start a WebSocket session.
   #:
-  #: write_body :: (bytes -> coroutine a) -> coroutine a
+  #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  write_body = _ ~>
-    writer = Writer @writer
-    reader = Reader @reader writer
+  communicate = reader writer ~>
+    writer = Writer writer
+    reader = Reader reader writer
     @handler reader writer
 
 
@@ -166,4 +166,4 @@ ContextAware = subclass object where
        not $ (except
          err => len (base64.b64decode key) == 16
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'
-    Response handler key @reader @writer
+    Response handler key

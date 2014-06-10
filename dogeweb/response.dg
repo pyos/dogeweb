@@ -17,7 +17,7 @@ import 'struct'
 #:
 responsify = asyncio.coroutine $ smth -> if
   smth :: Response => smth
-  smth :: str      => Response 200 dict! $ smth.encode 'utf-8'
+  smth :: str      => Response 200 () $ smth.encode 'utf-8'
   smth :: tuple    =>
     r = yield from $ responsify $ snd smth
     r.code = fst smth
@@ -30,7 +30,7 @@ responsify = asyncio.coroutine $ smth -> if
 #: jsonify :: object -> Response
 #:
 jsonify = smth -> Response 200
-  dict' ('Content-Type', 'application/json; charset=utf-8')
+  ('Content-Type', 'application/json; charset=utf-8'),
   (json.dumps smth).encode 'utf-8'
 
 
@@ -39,7 +39,7 @@ Abort = subclass Exception where
   #:
   #: ???
   #:
-  __init__ = @code @description: '' @headers: dict! @flags: 0 ~>
+  __init__ = @code @description: '' @headers: () @flags: 0 ~>
     (super Abort self).__init__ @description
 
   name = ~> http.responses.get @code 'Unknown Error'
@@ -58,7 +58,7 @@ Response = subclass object where
   #:
   #: defheaders :: dict str str
   #:
-  defheaders = ~> dict'
+  defheaders = ~> list'
     'Content-Type',   'text/html; charset=utf-8'
     'Content-Length', str $ sum $ map len @data
     # NOTE this should be replaced with `'Transfer-Encoding', 'chunked'` if
@@ -86,10 +86,9 @@ FileResponse = subclass Response where
   #:
   #: defheaders :: dict str str
   #:
-  defheaders = ~> dict'
+  defheaders = ~> list'
     except err => 'Content-Length', str (os.stat @path).st_size
            err :: OSError => abort 404
-    
 
   #: The contents of a file object.
   #:
@@ -104,7 +103,7 @@ FileResponse = subclass Response where
 #:
 #: abort :: int (Optional str) (Optional (dict str str)) -> a
 #:
-abort = code info: '' headers: dict! -> raise $ Abort code info headers
+abort = code info: '' headers: () -> raise $ Abort code info headers
 
 
 #: Issue a 302 Found. The client is redirected to a new URL.
@@ -118,7 +117,7 @@ redirect = path description: '' -> raise $ Abort 302 description $ dict' locatio
 #:
 #: static :: str (Optional bool) (Optional (dict str str)) -> Response
 #:
-static = path attachment: True headers: dict! ->
+static = path attachment: True headers: () ->
   mime = fst $ mimetypes.guess_type path strict: False
   attachment =>
     # TODO specify `filename`.

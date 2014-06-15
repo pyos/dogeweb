@@ -218,8 +218,7 @@ upgrade = router $ *: choices -> req **: k -> next $
 #: accept :: Router str
 #:
 accept = router $ *: choices -> req **: k ->
-  xs = map ((i, (x, h)) -> (req.accept.mime !! x, -i, h)) $ enumerate choices
-  fn = max xs !! 2
+  fn = max choices key: ((x, _) -> req.accept.mime !! x) !! 1
   fn req **: k
 
 
@@ -284,9 +283,9 @@ dir = router $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> ne
 #:
 host = router $ *: choices -> req **: k -> next $
   where
-    for (host, fn) in choices =>
-      if req.headers.get 'Host' '' `_issubdomainof` host =>
-        yield $ fn req **: k
+    this = req.headers.get 'Host' ''
+    for (host, fn) in choices => if this `_issubdomainof` host =>
+      yield $ fn req **: k
     req.abort 404
 
 
@@ -298,12 +297,13 @@ ContextAware = subclass object where
   #: modname  :: [str]     -- names of these functions.
   #:
   __init__ = *: a **: k ~>
-    @modpath  = list!
-    @modroute = list!
-    @modname  = list!
+    (super ContextAware self).__init__ *: a **: k
+    @modpath  = list' ''
+    @modroute = list' @handler
+    @modname  = list' '<root>'
     # If this is set to `True`, `_methodcheck` does nothing.
     @_nomethodcheck = False
-    (super ContextAware self).__init__ *: a **: k
+    None
 
   #: The requested path relative to `/`, not the current module.
   #:
@@ -324,22 +324,19 @@ ContextAware = subclass object where
   #: url_for :: str ** -> str
   #:
   url_for = name **: args ~>
-    parent = 0
-    while name.startswith '.' =>
-      name  !!= slice 1 None
-      parent += 1
+    name   = name.split '.'
+    parent = 1
+    while name !! 0 == '' =>
+      name.pop 0
+      parent -= 1
 
-    xs = list $ zip @modpath @modroute
-    # This allows absolute references, e.g. `url_for "static"`.
-    xs.insert 0 ('', @handler)
-    # On absolute imports, leave the root handler only.
-    # On relative imports, leave everything but the last `parent - 1` entries.
-    xs !!= slice None (1 - parent or None)
-    not xs => raise $ ValueError 'relative import out of bounds'
+    xs = list (zip @modpath @modroute @modname) !! slice None (parent or None)
+    not xs   => raise $ ValueError 'relative name out of bounds'
+    not name => raise $ ValueError 'no route name'
 
-    fn = xs !! -1 !! 1
-    for n in name.split '.' =>
-      not $ hasattr fn 'routemap' => raise $ TypeError 'module does not support namespacing'
-      not $ n in fn.routemap      => raise $ ValueError $ 'route {!r} does not exist'.format n
-      xs.append (path, fn = fn.routemap !! n)
+    for n in name =>
+      _, fn, m = xs !! -1
+      except err => xs.append (fn.routemap !! n !! 0, fn.routemap !! n !! 1, n)
+             err :: AttributeError => raise $ TypeError  $ 'route {!r} is not a namespace'.format m
+             err :: KeyError       => raise $ ValueError $ 'route {!r} does not exist'.format n
     concrete args $ ''.join $ map fst xs

@@ -89,8 +89,7 @@ Message = subclass bytes where
 
 Reader = subclass object where
   __init__ = self @reader @writer ->
-  __iter__ = self -> self
-  __next__ = self -> while True =>
+  __iter__ = self -> while True =>
     msg = except
       err => yield from $ parse @reader
       err :: asyncio.IncompleteReadError => raise $ GeneratorExit $ Message CLOSE b'' -1

@@ -31,10 +31,10 @@ app = dogeweb.app $ r.file
       for client in clients => yield from $ client.text $ b'S ' + idb + b' connected'
       clients.add output
 
-      for f in input =>
+      while True =>
         msg = except
-          # The input queue is an iterator of coroutines that return the next frame.
-          err => yield from f
+          # The input queue is a coroutine that returns the next message.
+          err => yield from input
           err :: GeneratorExit   => break!  # The client has disconnected.
           err :: websocket.Error => break!  # A corrupt frame was received.
 

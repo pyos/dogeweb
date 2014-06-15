@@ -122,7 +122,8 @@ redirect = path info: '' code: 302 -> raise $ Abort code info (('location', path
 #: static :: str (Optional bool) (Optional (dict str str)) -> Response
 #:
 static = path attachment: True headers: () ->
-  mime = fst $ mimetypes.guess_type path strict: False
+  mime    = fst $ mimetypes.guess_type path strict: False
+  headers = struct.Headers headers
   attachment =>
     # TODO specify `filename`.
     headers.setdefault 'Content-Disposition' 'attachment'

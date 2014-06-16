@@ -6,6 +6,7 @@ import '/asyncio/TimeoutError'
 import '/asyncio/CancelledError'
 import '/asyncio/IncompleteReadError'
 
+import 'util'
 import 'http'
 import 'request'
 import 'response'
@@ -28,17 +29,15 @@ Server = subclass object where
   #:
   run = *: a loop: None **: k ~>
     loop = loop or asyncio.get_event_loop!
-    srv  = loop.run_until_complete $ self loop *: a **: k
+    srv  = loop.run_until_complete $ util.start_server *: a **: k loop: loop $ self loop
     except _       => loop.run_forever!
-           finally =>
-             srv.close!
-             loop.run_until_complete srv.wait_closed!
+           finally => srv.close!
 
-  #: Asynchronously start a server. See `asyncio.start_server` for arguments.
+  #: Create a connection handler. Use with `asyncio.start_server` or something similar.
   #:
-  #: () :: EventLoop * ** -> coroutine AbstractServer
+  #: () :: EventLoop -> StreamReader StreamWriter -> coroutine a
   #:
-  __call__ = loop *: a **: k ~> asyncio.start_server loop: loop *: a **: k $ reader writer -> except
+  __call__ = loop ~> reader writer -> except
     err =>
       SOCKET_KEEPALIVE =>
         sock = writer.transport.get_extra_info 'socket'
@@ -47,7 +46,7 @@ Server = subclass object where
       while True =>
         req = request.Request @handler loop reader writer @log *:
           except
-            e2 => yield from $ asyncio.wait_for timeout: @timeout $ http.io_request reader
+            e2 => yield from $ util.timelimit @timeout loop: loop $ http.io_request reader
             e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
             e2 :: TimeoutError        => raise CancelledError
             e2 :: IncompleteReadError => raise CancelledError

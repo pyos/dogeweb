@@ -27,7 +27,7 @@ MultiDict = subclass dict where
   #:
   #: add :: a b -> NoneType
   #:
-  add = k v ~> (@setdefault k list!).append v
+  add = k v ~> (dict.setdefault self k list!).append v
 
   #: Return the first value for a given key or a default if none exists.
   #:
@@ -90,6 +90,12 @@ MultiDict = subclass dict where
       init :: dict => init.items!
       otherwise    => init
     for (k, v) in items => self !! k = v
+
+  #: Create a key with a given value iff it does not exist yet.
+  #:
+  #: setdefault :: a b -> [b]
+  #:
+  setdefault = k v ~> self.get k or list' (self !! k = v)
 
 
 Headers = subclass MultiDict where

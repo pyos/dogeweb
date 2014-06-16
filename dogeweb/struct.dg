@@ -103,6 +103,7 @@ Headers = subclass MultiDict where
   __delitem__ = k      ~> MultiDict.__delitem__ self (@normalize k)
   __setitem__ = k v    ~> MultiDict.__setitem__ self (@normalize k) v
   setdefault  = k v    ~> MultiDict.setdefault  self (@normalize k) v
+  add         = k v    ~> MultiDict.add         self (@normalize k) v
   get         = k *: a ~> MultiDict.get         self (@normalize k) *: a
   pop         = k *: a ~> MultiDict.pop         self (@normalize k) *: a
   getall      = k      ~> MultiDict.getall      self (@normalize k)

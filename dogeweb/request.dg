@@ -32,11 +32,12 @@ Request = subclass route.ContextAware websocket.ContextAware where
   #: headers  :: Headers  -- additional HTTP headers as a dict-like object.
   #: payload  :: bytes    -- the request body.
   #: handler  :: Handler  -- the root handler of the application this request was received by.
+  #: loop     :: EventLoop
   #: log      :: Logger
   #: reader   :: StreamReader
   #: writer   :: StreamWriter -- streams to use after HTTP Upgrade.
   #:
-  __init__ = @handler @reader @writer @log @method path @version @headers @payload ~>
+  __init__ = @handler @loop @reader @writer @log @method path @version @headers @payload ~>
     @path, _, @query = path.partition '?'
     (super Request self).__init__!
 

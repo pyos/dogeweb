@@ -45,7 +45,7 @@ Server = subclass object where
         sock.setsockopt socket.SOL_SOCKET socket.SO_KEEPALIVE 1
 
       while True =>
-        req = request.Request @handler reader writer @log *:
+        req = request.Request @handler loop reader writer @log *:
           except
             e2 => yield from $ asyncio.wait_for timeout: @timeout $ http.io_request reader
             e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError

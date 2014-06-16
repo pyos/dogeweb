@@ -7,7 +7,7 @@ from dogeweb import r
 
 
 def _sleep_handler(req):
-    yield from asyncio.sleep(5)
+    yield from asyncio.sleep(5, loop=req.loop)
     return 200, 'Done sleeping.\n'
 
 

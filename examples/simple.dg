@@ -66,7 +66,7 @@ app = dogeweb.app $ r.dir
       # A handler can be an asyncio coroutine, too.
       # It's not necessary to use the decorator, though; a generator
       # is still a generator.
-      yield from $ asyncio.sleep 5
+      yield from $ asyncio.sleep 5 loop: @loop
       # Acceptable return values are strings (which are assumed to be UTF-8
       # HTML pages), 2-tuples `(response code, another string)`, and instances
       # of `dogeweb.response.Response`.

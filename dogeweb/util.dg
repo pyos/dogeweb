@@ -12,7 +12,7 @@ StreamReaderProtocol = subclass asyncio.StreamReaderProtocol where
     @task = None
     (super StreamReaderProtocol self).__init__ loop: loop
       asyncio.StreamReader loop: loop
-      r w -> (@task = asyncio.async $ @callback r w)
+      r w -> (@task = asyncio.async loop: loop $ @callback r w)
 
   connection_lost = exc ~>
     @task => @task.cancel!

@@ -1,0 +1,40 @@
+import '/asyncio'
+
+
+StreamReaderProtocol = subclass asyncio.StreamReaderProtocol where
+  #: A version of `StreamReaderProtocol` that cancels its task when losing connection.
+  #: Also, it always uses a standard `StreamReader`.
+  #:
+  #: callback :: StreamReader StreamWriter -> coroutine a
+  #: task     :: Maybe (Task a)
+  #:
+  __init__ = @callback loop: None ~>
+    @task = None
+    (super StreamReaderProtocol self).__init__ loop: loop
+      asyncio.StreamReader loop: loop
+      r w -> (@task = asyncio.async $ @callback r w)
+
+  connection_lost = exc ~>
+    @task => @task.cancel!
+    (super StreamReaderProtocol self).connection_lost exc
+
+
+#: `yield from` with a time limit.
+#:
+#: timelimit :: float (Either (coroutine a) (Future a)) (Optional EventLoop) -> coroutine a
+#:
+timelimit = delay task loop ->
+  loop   = loop or asyncio.get_event_loop!
+  task   = asyncio.async task loop: loop
+  handle = loop.call_later delay task.cancel
+  except _       => yield from task
+         finally => handle.cancel!
+
+
+#: A version of `start_server` that uses `StreamProtocol`s.
+#:
+#: start_server :: typeof asyncio.start_server
+#:
+start_server = callback *: a loop: None **: k ->
+  loop = loop or asyncio.get_event_loop!
+  loop.create_server *: a **: k $ -> StreamReaderProtocol callback loop: loop

@@ -6,15 +6,14 @@ import 'util'
 
 
 Worker = subclass base.Worker where run = self ->
-  srv  = list!
   loop = asyncio.new_event_loop!
   asyncio.get_event_loop!.close!
   asyncio.set_event_loop loop
   loop.run_until_complete $
-    where except
-      _ =>
-        for s in @sockets => srv.append $ yield from $ util.start_server sock: s loop: loop $ @wsgi loop
-        while @alive and @ppid == os.getppid! =>
+    where
+      srv = yield from $ util.start_server sock: @sockets loop: loop $ @wsgi loop
+      except
+        _ => while @alive and @ppid == os.getppid! =>
           @notify!
           yield from $ asyncio.sleep 1 loop: loop
-      finally => for s in srv => s.close!
+        finally => srv.close!

@@ -36,5 +36,21 @@ timelimit = delay task loop ->
 #: start_server :: typeof asyncio.start_server
 #:
 start_server = callback *: a loop: None **: k ->
+  create_server *: a loop: loop **: k $ -> StreamReaderProtocol callback loop: loop
+
+
+#: A version of `create_server` that accepts any number of sockets as `sock`.
+#:
+#: create_server :: typeof asyncio.create_server
+#:
+create_server = protocol_factory *: a loop: None sock: None ssl: None **: k ->
   loop = loop or asyncio.get_event_loop!
-  loop.create_server *: a **: k $ -> StreamReaderProtocol callback loop: loop
+  if
+    sock :: list =>
+      server = asyncio.base_events.Server loop sock
+      for s in sock =>
+        s.listen $ k.get 'backlog' 100
+        s.setblocking False
+        loop._start_serving protocol_factory s ssl server
+      server
+    otherwise => yield from $ loop.create_server protocol_factory *: a sock: sock ssl: ssl **: k

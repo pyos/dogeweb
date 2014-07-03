@@ -92,9 +92,9 @@ Reader = subclass object where
   __iter__ = self -> while True =>
     msg = except
       err => yield from $ parse @reader
-      err :: asyncio.IncompleteReadError => raise $ GeneratorExit $ Message CLOSE b'' -1
+      err :: asyncio.IncompleteReadError => raise asyncio.CancelledError
     if msg.is_ping  => yield from @writer.pong
-       msg.is_close => raise $ GeneratorExit msg
+       msg.is_close => raise $ asyncio.CancelledError msg
        otherwise    => raise $ StopIteration msg
 
 

@@ -11,6 +11,14 @@ import '/dogeweb/r'
 
 app = dogeweb.app $ r.file
   '/', ~> 'Hello, World!'
+
+if __name__ == "__main__" => app.run '0.0.0.0' 8000
+```
+
+```sh
+python3 -m dg helloworld.dg
+# Or, if you want more RPS:
+gunicorn -k dogeweb.gunicorn.Worker helloworld:app
 ```
 
 See [this example](https://github.com/pyos/dogeweb/blob/master/examples/simple.dg)

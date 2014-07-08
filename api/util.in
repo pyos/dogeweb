@@ -1,4 +1,4 @@
-:description: Making asyncio even better
+:description: making asyncio even better
 
 
 :class: StreamReaderProtocol

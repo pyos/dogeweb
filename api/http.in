@@ -1,4 +1,4 @@
-:description: HTTP/1.1 parsers.
+:description: HTTP/1.1 parsers
 
 
 :function: status line

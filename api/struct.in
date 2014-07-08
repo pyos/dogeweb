@@ -1,4 +1,4 @@
-:description: various helper data structures.
+:description: various helper data structures
 
 
 :class: MultiDict

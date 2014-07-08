@@ -1,4 +1,4 @@
-:description: a neater representation of HTTP requests.
+:description: a neater representation of HTTP requests
 
 
 :class: Request
@@ -66,21 +66,6 @@
 :attribute: address
   The IP address of the client as a string.
 
-:note:
-  The following methods do not use any info from the request; they're shortcuts.
-
-:method: abort
-  Same as [response.abort]((local)).
-
-:method: redirect
-  Same as [response.redirect]((local)).
-
-:method: static
-  Same as [response.static]((local)).
-
-:method: jsonify
-  Same as [response.jsonify]((local)).
-
 :attribute: fullpath
   The requested path relative to `/`. (Unlike `path`, which is relative to the module.)
 
@@ -120,3 +105,18 @@
   [response.Response]((local)) with appropriate headers. After these are sent,
   `handler` will be called with a reader and a writer. See [websocket.Reader]((local))
   and [websocket.Writer]((local)) for details.
+
+:note:
+  The following methods do not use any info from the request; they're shortcuts.
+
+:method: abort code (Optional info) (Optional headers)
+  Same as [response.abort]((local)).
+
+:method: redirect path (Optional info) (Optional code)
+  Same as [response.redirect]((local)).
+
+:method: static path (Optional attachment) (Optional headers)
+  Same as [response.static]((local)).
+
+:method: jsonify smth
+  Same as [response.jsonify]((local)).

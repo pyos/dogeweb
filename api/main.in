@@ -1,4 +1,4 @@
-:description: An HTTP extension for asyncio's StreamReaderProtocol.
+:description: the asyncio protocol
 
 
 :class: Server handler (Optional onerror) (Optional timeout)

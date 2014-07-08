@@ -1,4 +1,4 @@
-:description: An HTTP response wrapper
+:description: an HTTP response wrapper
 
 
 :function: responsify smth

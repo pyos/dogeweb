@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>websocket - WebSocket 13 support</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="/static/starter-template.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>websocket - WebSocket 13 support</h1>
+      <div class="section section-class">
+  <h2><span class='decl-name' id='Message'>Message</span></h2>
+  <p>A subclass of <code>bytes</code> that encodes a single message.</p>
+
+</div>
+<div class="section section-attribute">
+  <h2><span class='decl-name' id='is_ping'>is_ping</span></h2>
+  <p>Should never appear if you&rsquo;re using a <a href="(this)">Reader</a> (it handles pings automatically.)</p>
+
+</div>
+<div class="section section-attribute">
+  <h2><span class='decl-name' id='is_pong'>is_pong</span></h2>
+  <p>Whether this message is a response to a previously sent ping.</p>
+
+</div>
+<div class="section section-attribute">
+  <h2><span class='decl-name' id='is_data'>is_data</span></h2>
+  <p>Whether this message is some binary data.</p>
+
+</div>
+<div class="section section-attribute">
+  <h2><span class='decl-name' id='is_text'>is_text</span></h2>
+  <p>Whether this message is text (in UTF-8, I think?)</p>
+
+</div>
+<div class="section section-attribute">
+  <h2><span class='decl-name' id='is_close'>is_close</span></h2>
+  <p>Whether this message is the last one sent over this channel.
+The connection has already been closed.</p>
+
+</div>
+<div class="section section-class">
+  <h2><span class='decl-name' id='Reader'>Reader</span></h2>
+  <p>A special coroutine-like object that waits for the next message and returns it
+when used with <code>yield from</code>. Raises <code>asyncio.CancelledError</code> if the connection
+gets closed; the first argument of the exception, if it exists, is
+a <a href="(this)">Message</a> received before closing the connection (it will have <code>is_close</code>
+set to <code>True</code>.)</p>
+
+</div>
+<div class="section section-class">
+  <h2><span class='decl-name' id='Writer'>Writer</span></h2>
+  <p>An object that allows one to send messages easily.</p>
+
+</div>
+<div class="section section-method">
+  <h2><span class='decl-name' id='ping'>ping</span> <span class='decl-arg'>data</span></h2>
+  <p>Send a ping.</p>
+
+</div>
+<div class="section section-method">
+  <h2><span class='decl-name' id='pong'>pong</span> <span class='decl-arg'>data</span></h2>
+  <p>Respond to a ping.</p>
+
+</div>
+<div class="section section-method">
+  <h2><span class='decl-name' id='text'>text</span> <span class='decl-arg'>data</span></h2>
+  <p>Send some text. Note that <code>data</code> must still be a <code>bytes</code> object.</p>
+
+</div>
+<div class="section section-method">
+  <h2><span class='decl-name' id='data'>data</span> <span class='decl-arg'>data</span></h2>
+  <p>Send some binary data.</p>
+
+</div>
+<div class="section section-method">
+  <h2><span class='decl-name' id='close'>close</span> <span class='decl-arg-opt'>code</span> <span class='decl-arg-opt'>data</span></h2>
+  <p>Send a <code>close</code> message. <strong>No other messages can be sent after that.</strong></p>
+
+</div>
+    </div>
+  </body>
+</html>
+

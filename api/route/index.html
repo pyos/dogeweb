@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>route - the routing subsystem</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../../">Main page</a></li>
+            <li><a href="../">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>route - the routing subsystem</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-note" id="1">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>This module is also available under the name <code>r</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-global" id="WILDCARDRE">
+  <div class="container section section-global">
+    <h2><span class='decl-name' id='WILDCARDRE'>WILDCARDRE</span></h2>
+    <p>A precompiled regular expression that matches wildcards in routes. By default,
+the syntax is <code>&lt;type:name&gt;</code> or <code>&lt;name&gt;</code> (short for <code>&lt;str:name&gt;</code>.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-global" id="wildcards">
+  <div class="container section section-global">
+    <h2><span class='decl-name' id='wildcards'>wildcards</span></h2>
+    <p>A dict that maps types to <code>(regex, parser)</code> tuples. <code>regex</code> must be a valid
+non-compiled (i.e. a string) regular expression that matches whatever <code>parser</code>
+accepts; <code>parser</code> must be a function that accepts the matched substring and
+returns some object that will be passed on to the handler.</p>
+
+<p>By default, the following types are supported:</p>
+
+<ul>
+<li>str (any sequence of characters excluding <code>/</code>);</li>
+<li>path (any sequence of characters, period);</li>
+<li>int (a positive integer).</li>
+</ul>
+
+<p>If the type is not specified, <code>None</code> is used. By default, that&rsquo;s the same
+as specifying <code>str</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="pathregex">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='pathregex'>pathregex</span> <span class='decl-arg'>path</span></h2>
+    <p>Given a path route with wildcards, create a regex according to <a href="(this)">wildcards</a>.
+Returns a <code>(regex, parsers)</code> tuple where <code>parsers</code> is a dict mapping group names
+to parser functions from <code>wildcards</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="concrete">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='concrete'>concrete</span> <span class='decl-arg'>args</span> <span class='decl-arg'>path</span></h2>
+    <p>Sort of a reverse of <a href="(this)">pathregex</a>; given a dict that maps group names
+to values and a path route with wildcards, construct a complete path.
+For example, calling this with <code>{&#39;name&#39;: &#39;spam&#39;}</code> and <code>&quot;/u/&lt;name&gt;/&quot;</code>
+would result in <code>&quot;/u/spam/&quot;</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="router">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='router'>router</span> <span class='decl-arg'>fn</span></h2>
+    <p>A decorator (or a higher-level function) that wraps a router.
+A router is a function that accepts either</p>
+
+<ul>
+<li>a fixed number of arguments, the last of which is a routing target;</li>
+<li>a variable number of arguments, all of which are routing targets;</li>
+</ul>
+
+<p>where a routing target is either a function or a tuple in which the last item
+is a function.</p>
+
+<p>Unlike a normal function, a router</p>
+
+<ul>
+<li><p>can accept properties instead of functions; those are converted into
+one-argument functions automatically. For example:</p>
+
+<pre><code class="language-dg">f = g -&gt; request -&gt; g request
+f $ ~&gt; &#39;Hello, World!&#39;
+</code></pre>
+
+<p>would not work (a property is not callable), but</p>
+
+<pre><code class="language-dg">f = router $ g -&gt; request -&gt; g request
+f $ ~&gt; &#39;Hello, World!&#39;
+</code></pre>
+
+<p>would;</p></li>
+<li><p>can handle requests with methods other than <code>GET</code> and <code>HEAD</code> even if outside
+a <a href="(this)">method</a> router (normal functions would raise HTTP 405).</p></li>
+</ul>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-note" id="7">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>In all of the functions outlined below,
+a <em>handler</em> is a function that accepts a request as an argument and returns
+a response (or something else supported by <a href="(local)">response.responsify</a>.)
+Optionally, it may also accept some keyword arguments that correspond to wildcards
+in paths; for example, if you have a route for <code>/u/&lt;name&gt;</code>, its handler must
+accept a keyword argument <code>name</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="upgrade">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='upgrade'>upgrade</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on HTTP <code>Upgrade</code> header. Routes must be <code>(protocol, handler)</code> tuples.
+If the client does not wish to switch protocols (i.e. did not specify an <code>Upgrade</code>
+header), <code>http</code> is used.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="accept">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='accept'>accept</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on HTTP <code>Accept</code> header. Routes must be <code>(mime, handler)</code> tuples; the handler
+that corresponds to a MIME type with highest quality is chosen. See
+<a href="(local)">request.Request.accept</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="method">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='method'>method</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on HTTP method. Routes must be <code>(method, handler)</code> tuples. If this router is
+not used, HTTP 405 is raised for methods other than <code>GET</code> and <code>HEAD</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="file">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='file'>file</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on the requested path. Routes must be <code>(path, handler)</code> or <code>(path, name, handler)</code>
+tuples. The <code>name</code> item is used for constructing URLs; see <a href="(local)">request.Request.url_for</a>.
+<code>path</code> may contain wildcards; see <a href="(this)">WILDCARDRE</a>, <a href="(this)">wildcards</a>, and
+<a href="(this)">pathregex</a>. If a route ends with a slash but the requested path does not
+(but otherwise matches the regex), the client is redirected to a path that contains
+the slash. (For example, given a route for <code>/smth/</code>, a redirect from <code>/smth</code> to
+<code>/smth/</code> is created automatically.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="dir">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='dir'>dir</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route between modules. The arguments are the same as for <a href="(this)">file</a>, except the paths
+must end with slashes. Unlike <code>file</code>, routes do not have to match the whole path,
+only the beginning of it. Note that <a href="(this)">file</a> routes relative to the current module;
+for example, if you have a module <code>/users/</code> and you wish to match <code>/users/login</code>,
+this is the structure you want:</p>
+
+<pre><code class="language-dg">handler = r.dir
+  &#39;/users/&#39;, r.file
+    &#39;/login&#39;, ...
+</code></pre>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="host">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='host'>host</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on HTTP <code>Host</code> header. Routes must be <code>(host, handler)</code> tuples; the first
+handler that corresponds to a non-strict superdomain is used. (For example,
+<code>spam.com</code> would match both <code>spam.com</code> and <code>eggs.spam.com</code>, but not <code>eggs.org</code>
+or <code>spam.com:8080</code>.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-note" id="14">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>If anonymous functions are not your style, all of the above routers are
+available as decorators.</p>
+
+<ul>
+<li><code>Upgrade</code> → <code>upgrade</code></li>
+<li><code>Accept</code> → <code>accept</code></li>
+<li><code>Method</code> → <code>method</code></li>
+<li><code>File</code> → <code>file</code></li>
+<li><code>Dir</code> → <code>dir</code></li>
+<li><code>Host</code> → <code>host</code></li>
+</ul>
+
+<p>First, create an instance of the router of your choice:</p>
+
+<pre><code class="language-python">h = dogeweb.route.File()
+</code></pre>
+
+<p>Second, add some handlers through the <code>route</code> decorator:</p>
+
+<pre><code class="language-python">@h.route(&#39;/&#39;)
+def hello(request):
+    return &#39;Hello, World!&#39;
+</code></pre>
+
+<p>Optionally, <code>add_route</code> can be used if the function already exists:</p>
+
+<pre><code class="language-python">h.add_route(&#39;/hello/&#39;, &#39;hello_copy&#39;, hello)
+</code></pre>
+
+<p>Third, use the <code>handler</code> attribute to convert this object into a function:</p>
+
+<pre><code class="language-python">app = dogeweb.app(h.handler)
+</code></pre>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

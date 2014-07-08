@@ -1,0 +1,156 @@
+import '/dg'
+import '/re'
+import '/glob'
+import '/hoep'
+import '/xml/sax/saxutils/escape'
+
+
+INDENTRE = re.compile '^ *'
+HEADERRE = re.compile '^:(\w+): *(.*)$'
+
+DECLNAME = '''<span class='decl-name' id='{0}'>{0}</span>'''
+DECLARG  = '''<span class='decl-arg'>{}</span>'''
+DECLARGV = '''<span class='decl-arg decl-arg-var'>{}</span>'''
+DECLARGK = '''<span class='decl-arg decl-arg-vkv'>{}</span>'''
+DECLOPT  = '''<span class='decl-arg decl-arg-opt'>{}</span>'''
+
+SECTION = '''<div class="section-wrapper section-wrapper-{0}" id="{1[0]}">
+  <div class="container section section-{0}">
+    <h2>{1[1]}</h2>
+    {2}
+  </div>
+</div>'''
+
+TOCITEM = '''<li><a href="{0}/">{0}</a> — {1}</li>'''
+TOCLIST = '''<ul>{}</ul>'''
+
+FULLPAGE = '''<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{name} - {descr}</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="{parent}../">Main page</a></li>
+            <li><a href="{parent}">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>{name} - {descr}</h1>
+    </div>
+    {content}
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+'''
+
+
+sections = input ->
+  lines  = iter input.splitlines!
+  indent = 0
+  data   = ''
+  first  = ''
+  header = None
+
+  for (i, line) in enumerate lines 1 =>
+    this_indent = INDENTRE.match line
+    this_indent = len this_indent.group!
+    if not line        => data += '\n'
+       not this_indent =>
+         header => yield (header, first, data.strip '\n')
+         data   = ''
+         indent = 0
+         header = HEADERRE.match line
+         header, first = header.groups!
+       not header => raise $ ValueError 'expected a header' i
+       otherwise =>
+         indent = indent or this_indent
+         indent > this_indent => raise $ ValueError 'indentation level too low' i
+         data  += line !! slice indent None + '\n'
+  header => yield (header, first, data.strip '\n')
+
+
+compile = level input ->
+  descr  = ''
+  result = list!
+  for (i, (header, first, data)) in enumerate (sections input) => if
+    header == 'description' => descr = first
+    header == 'toc'         => result.append (escape header, ('_toc', escape data), toc first)
+    not first => result.append (escape header, (str i, ''), markdown level data)
+    otherwise => result.append (escape header, funcdecl first, markdown level data)
+  descr, result
+
+
+toc = mask -> TOCLIST.format $ ''.join $
+  where for f in sorted (glob.glob mask) =>
+    with fd = open f =>
+      name  = f.rpartition '.' !! 0
+      descr = '?'
+      for (header, first, data) in sections fd.read! =>
+        header == 'description' => descr = first
+      yield $ TOCITEM.format name descr
+
+
+funcdecl = line ->
+  a, kw, da, dkw, va, vkw, add = dg.DEFNARGS $ dg.parse line
+  da  => raise $ ValueError line
+  dkw => raise $ ValueError line
+  name = a.pop 0
+  args = list' $ DECLNAME.format name
+
+  parseargs = xs -> for x in xs => yield $
+    x = add.get x x
+    if x :: str     => DECLARG.format x
+       x :: dg.Expression and x.op == '' and len x.args == 2 and x.args !! 0 == 'Optional' =>
+         DECLOPT.format $ x.args !! 1
+       otherwise => raise $ ValueError line
+
+  a   => args.extend $ parseargs a
+  va  => args.append $ DECLARGV.format $ fst va
+  kw  => args.extend $ parseargs kw
+  vkw => args.append $ DECLARGK.format $ fst vkw
+  name, ' '.join args
+
+
+markdown = level data ->
+  hoep.render data
+    hoep.EXT_FENCED_CODE | hoep.EXT_NO_INTRA_EMPHASIS
+    hoep.HTML_SMARTYPANTS | hoep.HTML_ESCAPE
+
+
+makepage = name level data -> data =>
+  descr, sections = compile level data
+  FULLPAGE.format parent: ('../' * level) name: (escape name) descr: (escape descr) content:
+    '\n'.join $ map (x -> SECTION.format *: x) sections
+
+
+if __name__ == '__main__' =>
+  source       = import '/sys/stdin' pure
+  _, lvl, name = import '/sys/argv'  pure
+  print $ makepage name (int lvl) source.read!

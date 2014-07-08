@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>dogeweb - uniting doges all over the world</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../">Main page</a></li>
+            <li><a href="">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>dogeweb - uniting doges all over the world</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-toc" id="_toc">
+  <div class="container section section-toc">
+    <h2>Submodules</h2>
+    <ul><li><a href="gunicorn/">gunicorn</a> — gunicorn compatibility</li><li><a href="http/">http</a> — HTTP/1.1 parsers</li><li><a href="index/">index</a> — uniting doges all over the world</li><li><a href="request/">request</a> — a neater representation of HTTP requests</li><li><a href="response/">response</a> — an HTTP response wrapper</li><li><a href="route/">route</a> — the routing subsystem</li><li><a href="struct/">struct</a> — various helper data structures</li><li><a href="util/">util</a> — making asyncio even better</li><li><a href="websocket/">websocket</a> — WebSocket 13 support</li></ul>
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="app">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='app'>app</span> <span class='decl-arg'>handler</span> <span class='decl-arg decl-arg-opt'>onerror</span> <span class='decl-arg decl-arg-opt'>timeout</span></h2>
+    <p>Create a complete application. <code>handler</code> is a function that accepts <a href="(local)">request.Request</a>s
+and returns something that can be converted into a <a href="(local)">response.Response</a>.
+<code>onerror</code> is a function that accepts a <a href="(local)">request.Response</a> and a
+<a href="(local)">request.Abort</a>, but is otherwise similar to a handler.
+<code>timeout</code> is how long to wait for requests, in seconds. The timer starts at the
+beginning of the connection or after sending a response over a <code>keep-alive</code>
+connection, and ends just before handling the request.</p>
+
+<p>Also available as <code>main.Server</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="__call__">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='__call__'>__call__</span> <span class='decl-arg'>loop</span></h2>
+    <p>Construct a callback for <a href="(stdlib,unqualified)">asyncio.streams.StreamReaderProtocol</a>
+that would read requests, call handlers, and write responses when used.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="run">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='run'>run</span> <span class='decl-arg'>...</span></h2>
+    <p>Start a development server. The arguments are the same as for
+<a href="(local)">util.start_server</a>, except that <code>callback</code> is already provided.
+This method does not return unless you manually stop the event loop.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="abort">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Same as <a href="(local)">response.abort</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="redirect">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='redirect'>redirect</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>code</span></h2>
+    <p>Same as <a href="(local)">response.redirect</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="static">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='static'>static</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>attachment</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Same as <a href="(local)">response.static</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="jsonify">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='jsonify'>jsonify</span> <span class='decl-arg'>smth</span></h2>
+    <p>Same as <a href="(local)">response.jsonify</a>.</p>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

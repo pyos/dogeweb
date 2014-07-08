@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>struct - various helper data structures</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../../">Main page</a></li>
+            <li><a href="../">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>struct - various helper data structures</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-class" id="MultiDict">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='MultiDict'>MultiDict</span></h2>
+    <p>Like dict, only multi. Most of the normal dict methods are supported, plus:</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="getall">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='getall'>getall</span> <span class='decl-arg'>k</span></h2>
+    <p><code>get</code> only returns one item; this method returns a list of all items for a given key.
+If there are none, returns an empty list.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="popall">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='popall'>popall</span> <span class='decl-arg'>k</span></h2>
+    <p><code>pop</code> removes one item, this method removes all items. The return value is the same
+as for <code>getall</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="update">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='update'>update</span> <span class='decl-arg'>init</span></h2>
+    <p>Unlike <code>dict.update</code>, this method does not override old values; instead, both
+the old values and the new values are stored in this dict.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="replace">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='replace'>replace</span> <span class='decl-arg'>init</span></h2>
+    <p>This method is closer to <code>dict.update</code>; if a key occurs in <code>init</code>, the old
+values for that key are removed.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="Headers">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='Headers'>Headers</span></h2>
+    <p>A <a href="(this)">MultiDict</a> that normalizes its keys (by making them lowercase.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="Accept">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='Accept'>Accept</span></h2>
+    <p>A list of <code>(value, quality)</code> pairs sorted in descending order by <code>quality</code>.
+Unlike a normal list, it&rsquo;s not indexed by integers; instead, <code>accept !! smth</code>
+returns the quality assigned to <code>smth</code>, or 0 if there is none.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="File">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='File'>File</span></h2>
+    <p>A simple container for files submitted through <code>multipart/form-data</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="name">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='name'>name</span></h2>
+    <p>The name of this file as specified in <code>Content-Disposition</code>. NOTE: it&rsquo;s not safe
+to use this name without normalizing it first, as it can contain path separators
+and other unwanted stuff.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="data">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='data'>data</span></h2>
+    <p>The contents of this file as a <code>bytes</code> object.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="save">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='save'>save</span> <span class='decl-arg'>target</span></h2>
+    <p>Store this file in a local filesystem.</p>
+
+<p>This method is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

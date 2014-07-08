@@ -1,0 +1,75 @@
+code, pre {
+  background: none;
+  border: none;
+}
+
+.container {
+  max-width: 768px;
+}
+
+.section {
+  margin-top: 15px;
+}
+
+.footer {
+  background: #eee;
+  margin-top: 10px;
+  padding-top: 10px;
+  padding-bottom: 0px;
+}
+
+.section-wrapper-note {
+  background: #eee;
+}
+
+.section-method, .section-attribute {
+  padding-left: 60px;
+  padding-top: 10px;
+}
+
+.section > h2 {
+  font-family: monospace;
+  font-size: 24px;
+  margin: 10px 0;
+}
+
+.section-method > h2, .section-attribute > h2 {
+  font-size: 20px;
+}
+
+.section > h2:before {
+  color: #999;
+}
+/*
+.section-note > h2:before {
+  content: "note ";
+}
+*/
+.section-global > h2:before {
+  content: "const ";
+}
+
+.section-function > h2:before {
+  content: "func ";
+}
+
+.section-class > h2:before {
+  content: "class ";
+}
+
+.section-attribute > h2:before {
+  content: "attr ";
+}
+
+.section-method > h2:before {
+  content: "method ";
+}
+
+.decl-arg {
+  color: #999;
+}
+
+.decl-arg-opt:before { content: "["; }
+.decl-arg-opt:after  { content: "]"; }
+.decl-arg-var:before { content: "*: "; }
+.decl-arg-vkw:before { content: "**: "; }

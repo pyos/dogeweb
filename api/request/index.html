@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>request - a neater representation of HTTP requests</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../../">Main page</a></li>
+            <li><a href="../">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>request - a neater representation of HTTP requests</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-class" id="Request">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='Request'>Request</span></h2>
+    <p>A single HTTP request. Instances of this class are created by
+<a href="(local)">main.Server</a> automatically; you don&rsquo;t need to do that yourself.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="version">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='version'>version</span></h2>
+    <p>The HTTP version the client used as a <code>(major, minor)</code> tuple.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="method">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='method'>method</span></h2>
+    <p>The HTTP method used by the client, e.g. <code>GET</code> or <code>POST</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="path">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='path'>path</span></h2>
+    <p>The path requested by the client. Relative to the current routine module
+(see <a href="(local)">route.dir</a>.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="headers">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='headers'>headers</span></h2>
+    <p>Additional HTTP headers as a <a href="(local)">struct.Headers</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="payload">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='payload'>payload</span></h2>
+    <p>The request body as a <code>bytes</code> object.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="handler">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='handler'>handler</span></h2>
+    <p>The top-level handler this request was passed to (the one you created an instance of
+<a href="(local)">main.Server</a> with.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="loop">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='loop'>loop</span></h2>
+    <p>The <a href="https://docs.python.org/3/library/asyncio-eventloop.html">asyncio event loop</a>
+everything is running in.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="log">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='log'>log</span></h2>
+    <p>A <a href="(stdlib,logging)">logging.Logger</a> named <code>dogeweb</code>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="accept">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='accept'>accept</span></h2>
+    <p>Parsed values of various <code>Accept</code> headers.</p>
+
+<ul>
+<li><code>accept.mime</code> &ndash; <code>Accept</code></li>
+<li><code>accept.charset</code> &ndash; <code>Accept-Charset</code></li>
+<li><code>accept.language</code> &ndash; <code>Accept-Language</code></li>
+<li><code>accept.encoding</code> &ndash; <code>Accept-Encoding</code></li>
+</ul>
+
+<p>All of these are represented by <a href="(local)">struct.Accept</a> dict-like objects.
+MIME types, charsets, or whatever not specified in the request will have a quality
+of 0.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="cookies">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='cookies'>cookies</span></h2>
+    <p>All cookies from this request as a dict.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="args">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='args'>args</span></h2>
+    <p>Form fields passed through the URL (the part after <code>?</code>) as a <a href="(local)">struct.MultiDict</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="form">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='form'>form</span></h2>
+    <p>Form fields passed through the request body. This includes files, too.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="files">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='files'>files</span></h2>
+    <p>Same as <code>form</code>, but only top-level files are included. Removes the need for some
+type-checking.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="isxhr">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='isxhr'>isxhr</span></h2>
+    <p>Whether this request was made through <code>XmlHttpRequest</code> (aka AJAX).</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="isjson">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='isjson'>isjson</span></h2>
+    <p>Whether the client expects JSON instead of HTML. Useful for building APIs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="address">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='address'>address</span></h2>
+    <p>The IP address of the client as a string.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="fullpath">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='fullpath'>fullpath</span></h2>
+    <p>The requested path relative to <code>/</code>. (Unlike <code>path</code>, which is relative to the module.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="parent">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='parent'>parent</span></h2>
+    <p>The difference between <code>fullpath</code> and `path.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="url_for">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='url_for'>url_for</span> <span class='decl-arg'>__name</span> <span class='decl-arg decl-arg-vkv'>args</span></h2>
+    <p>Given the name of a route (in a syntax similar to Python relative imports)
+and some arguments, construct an URL that points to that route.</p>
+
+<p>For example, given this route structure:</p>
+
+<pre><code>/hello/    -&gt; modhello (module)
+  /world/    -&gt; world
+  /user/     -&gt; user
+/          -&gt; main (module)
+  /          -&gt; root
+  /login/    -&gt; login
+  /u/&lt;name&gt;/ -&gt; userinfo
+</code></pre>
+
+<p>Suppose the user has requested <code>/hello/user/</code>, meaning the current route&rsquo;s path
+is <code>modhello.user</code> and the currently used module is <code>modhello</code>. Here&rsquo;s what
+different calls to <code>url_for</code> would return:</p>
+
+<pre><code class="language-dg">url_for &#39;.world&#39;                     -&gt; &#39;/hello/world/&#39;
+url_for &#39;..modhello.user&#39;            -&gt; &#39;/hello/user/&#39;
+url_for &#39;..main.root&#39;                -&gt; &#39;/&#39;
+url_for &#39;main.login&#39;                 -&gt; &#39;/login/&#39;
+url_for &#39;main.userinfo&#39; name: &#39;spam&#39; -&gt; &#39;/u/spam/&#39;
+</code></pre>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="websocket">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='websocket'>websocket</span> <span class='decl-arg'>handler</span></h2>
+    <p>Initiate a websocket handshake. May abort the request with 400; if not, returns a
+<a href="(local)">response.Response</a> with appropriate headers. After these are sent,
+<code>handler</code> will be called with a reader and a writer. See <a href="(local)">websocket.Reader</a>
+and <a href="(local)">websocket.Writer</a> for details.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-note" id="22">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>The following methods do not use any info from the request; they&rsquo;re shortcuts.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="abort">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Same as <a href="(local)">response.abort</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="redirect">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='redirect'>redirect</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>code</span></h2>
+    <p>Same as <a href="(local)">response.redirect</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="static">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='static'>static</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>attachment</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Same as <a href="(local)">response.static</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="jsonify">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='jsonify'>jsonify</span> <span class='decl-arg'>smth</span></h2>
+    <p>Same as <a href="(local)">response.jsonify</a>.</p>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

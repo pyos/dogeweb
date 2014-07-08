@@ -32,16 +32,16 @@
 :class: Writer
   An object that allows one to send messages easily.
 
-:method: ping data
+:method: ping payload
   Send a ping.
 
-:method: pong data
+:method: pong payload
   Respond to a ping.
 
-:method: text data
+:method: text payload
   Send some text. Note that `data` must still be a `bytes` object.
 
-:method: data data
+:method: data payload
   Send some binary data.
 
 :method: close (Optional code) (Optional data)

@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>http - HTTP/1.1 parsers</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../../">Main page</a></li>
+            <li><a href="../">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>http - HTTP/1.1 parsers</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-function" id="status">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='status'>status</span> <span class='decl-arg'>line</span></h2>
+    <p>Parse the first line of a request, return a <code>(method, path, version)</code> tuple
+where <code>version</code> is a <code>(major, minor)</code> tuple. <code>major</code> is always 1.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="headers">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='headers'>headers</span> <span class='decl-arg'>lines</span></h2>
+    <p>Given a list (not an iterator!) of <code>bytes</code>, parse them as HTTP headers. Returns
+an iterator of <code>(name, value)</code> pairs where both <code>name</code> and <code>value</code> are strings.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="accept">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='accept'>accept</span> <span class='decl-arg'>data</span></h2>
+    <p>Parse the value of an <code>Accept</code>-like header. Returns an iterator of
+<code>(something, quality)</code> pairs; <code>quality</code> is a floating-point number from 0 to 1
+inclusive.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="cookies">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='cookies'>cookies</span> <span class='decl-arg'>xs</span> <span class='decl-arg decl-arg-opt'>encoding</span></h2>
+    <p>Parse multiple <code>Cookie</code> headers (<code>xs</code> is a list of strings.) Returns an iterator
+of <code>(name, value)</code> pairs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="body">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='body'>body</span> <span class='decl-arg'>data</span> <span class='decl-arg'>headers</span></h2>
+    <p>Parse a request body. <em>This function does not decompress gzip, nor does it
+handle chunked transfer-encoding.</em> <code>headers</code> must be a <a href="(local)">struct.Headers</a>.</p>
+
+<p>Supported MIME types:</p>
+
+<ul>
+<li><code>application/x-www-form-urlencoded</code></li>
+<li><code>multipart/form-data</code></li>
+<li><code>application/json</code></li>
+</ul>
+
+<p>Note that some of these do not support data types available in others; for example,
+only <code>multipart/form-data</code> supports files, and only <code>application/json</code> can
+transfer arrays. In JSON, objects are converted into <a href="(local)">struct.MultiDict</a>s.</p>
+
+<p>Returns an iterable of <code>(name, value)</code> pairs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="jsonform">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='jsonform'>jsonform</span> <span class='decl-arg'>xs</span></h2>
+    <p>Parse a JSON request body, converting objects into MultiDicts. The top-level
+entity must always be an object. Returns an iterable of <code>(name, value)</code> pairs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="query">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='query'>query</span> <span class='decl-arg'>xs</span> <span class='decl-arg decl-arg-opt'>encoding</span> <span class='decl-arg decl-arg-opt'>sep</span> <span class='decl-arg decl-arg-opt'>space</span></h2>
+    <p>Parse an urlencoded string. <code>encoding</code> defaults to <code>utf-8</code>. <code>sep</code> and <code>space</code>
+specify separators to use; by default, these are <code>&amp;</code> and <code>+</code>. Returns an iterable
+of <code>(name, value)</code> pairs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="multipart">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='multipart'>multipart</span> <span class='decl-arg'>data</span> <span class='decl-arg'>boundary</span> <span class='decl-arg decl-arg-opt'>encoding</span></h2>
+    <p>Parse a <code>multipart/form-data</code> request body. <code>data</code> must be <code>bytes</code>.
+<code>boundary</code> is an attribute extracted from <code>Content-Type</code>. <code>encoding</code> defaults to
+<code>utf-8</code>. Nested form data is parsed, too. Files are returned as <a href="(local)">struct.File</a>
+objects. Returns an iterable of <code>(name, value)</code> pairs.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="io_request">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='io_request'>io_request</span> <span class='decl-arg'>reader</span></h2>
+    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> connected to a transport,
+attempt to read a single HTTP request from it. If the request is incomplete,
+raises <a href="(stdlib,asyncio-streams)">asyncio.IncompleteReadError</a>. If the request could not
+be parsed (for example, it&rsquo;s an HTTP/0.9 request), raises <code>ValueError</code>.</p>
+
+<p>Returns a <code>(method, path, version, headers, payload)</code> tuple, where <code>headers</code>
+is a <a href="(local)">struct.Headers</a> and <code>payload</code> is an already decompressed and de-chunked
+<code>bytes</code> object.</p>
+
+<p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="io_payload_chunked">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='io_payload_chunked'>io_payload_chunked</span> <span class='decl-arg'>reader</span></h2>
+    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> connected to a transport,
+read data with <code>chunked</code> transfer-encoding. The headers preceding it must have already
+been parsed.</p>
+
+<p>Returns a <code>bytes</code> object; note that the data may have been compressed.</p>
+
+<p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="io_response">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='io_response'>io_response</span> <span class='decl-arg'>writer</span> <span class='decl-arg'>version</span> <span class='decl-arg'>code</span> <span class='decl-arg'>headers</span> <span class='decl-arg'>body</span></h2>
+    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamWriter</a> connected to a transport,
+send an HTTP response. <code>version</code> must be a <code>(major, minor)</code> tuple; <code>headers</code> —
+a <a href="(local)">struct.Headers</a> object; <code>body</code> — an iterable of <code>bytes</code>.</p>
+
+<p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>response - an HTTP response wrapper</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../_style.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+    <div class="navbar" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">dogeweb</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
+            <li><a href="../../">Main page</a></li>
+            <li><a href="../">API docs</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>response - an HTTP response wrapper</h1>
+    </div>
+    <div class="section-wrapper section-wrapper-function" id="responsify">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='responsify'>responsify</span> <span class='decl-arg'>smth</span></h2>
+    <p>Convert some object into a <a href="(this)">Response</a>. Supported objects are:</p>
+
+<ul>
+<li><a href="(this)">Response</a> objects (returned as-is);</li>
+<li>strings (assumed to be utf-8 HTML);</li>
+<li>bytestrings (assumed to be HTML with a <code>&lt;meta&gt;</code> tag specifying the encoding);</li>
+<li><code>(code, *headers, something_else)</code> tuples where <code>something_else</code> is
+one of the other supported objects and <code>headers</code> is an arbitrary amount
+of <code>(name, value)</code> tuples;</li>
+<li><a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutines</a>
+that return any of the above.</li>
+</ul>
+
+<p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="jsonify">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='jsonify'>jsonify</span> <span class='decl-arg'>smth</span></h2>
+    <p>Encode a JSON object with <code>json.dumps</code>, return a <a href="(this)">Response</a>
+with an appropriate <code>Content-Type</code> set.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="Abort">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='Abort'>Abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>description</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>An exception that signals HTTP errors. <code>description</code> must be a string;
+<code>headers</code> — something that can be converted into a dict.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="code">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='code'>code</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="description">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='description'>description</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="headers">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='headers'>headers</span></h2>
+    <p>Now as a <a href="(local)">struct.Headers</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="name">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='name'>name</span></h2>
+    <p>What this error code means according to the HTTP standard.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="Response">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='Response'>Response</span> <span class='decl-arg'>code</span> <span class='decl-arg'>headers</span> <span class='decl-arg'>data</span></h2>
+    <p>A single-chunk response. <code>bytes</code> must be a <code>bytes</code>, <code>headers</code> — something that
+can be converted into a dict.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="code">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='code'>code</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="description">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='description'>description</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="data">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='data'>data</span></h2>
+    <p>A list of chunks.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="headers">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='headers'>headers</span></h2>
+    <p>Now as a <a href="(local)">struct.Headers</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="defheaders">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='defheaders'>defheaders</span></h2>
+    <p>A property that returns some headers. These will be sent to the client
+unless overriden in the constructor. By default, these are:</p>
+
+<ul>
+<li><code>Content-Type: text/html; charset=utf-8</code></li>
+<li><code>Content-Length</code>: whatever the length of <code>data</code> is.</li>
+</ul>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-method" id="communicate">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='communicate'>communicate</span> <span class='decl-arg'>reader</span> <span class='decl-arg'>writer</span></h2>
+    <p>Called after the response is sent to the client. <code>reader</code> is an
+<a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> the request was received from,
+<code>writer</code> is an <a href="(stdlib,asyncio-streams)">asyncio.StreamWriter</a> the response was
+sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.)</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="FileResponse">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='FileResponse'>FileResponse</span> <span class='decl-arg'>code</span> <span class='decl-arg'>path</span> <span class='decl-arg'>headers</span> <span class='decl-arg decl-arg-opt'>bufsize</span></h2>
+    <p>A response that sends data from a local file instead of a string.
+Inherits <a href="(this)">Response</a>. If the file does not exist or is not readable,
+constructor throws HTTP 404.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="path">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='path'>path</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="bufsize">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='bufsize'>bufsize</span></h2>
+    
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="defheaders">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='defheaders'>defheaders</span></h2>
+    <p>Same as <a href="(this)">Response.defheaders</a>, except <code>Content-Length</code> is determined
+via <a href="(stdlib,os)">os.stat</a>.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-attribute" id="data">
+  <div class="container section section-attribute">
+    <h2><span class='decl-name' id='data'>data</span></h2>
+    <p>A property that returns an iterator of chunks, the closes the file
+after yielding the last one.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="abort">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Raise <a href="(this)">Abort</a>. Accepts the same arguments.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="redirect">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='redirect'>redirect</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>code</span></h2>
+    <p>Issue a redirect to another path by raising <code>Abort</code> with a <code>Location</code> header.
+By default, <code>code</code> is 302 (Found).</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="static">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='static'>static</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>attachment</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
+    <p>Guess the MIME type from the file name, create a <a href="(this)">FileResponse</a>.
+If <code>attachment</code> is true, <code>Content-Disposition</code> is set to <code>attachment</code>
+(meaning browsers will download the file instead of attempting to display it.)</p>
+
+<p><strong>NOTE</strong>: this function will happily send <em>any</em> file; normalize the filename first
+if you&rsquo;ve received it from an unknown source! For example, a client can easily
+request <code>/static/../../../../../../../etc/passwd</code>; to avoid this,
+call <a href="(stdlib,os.path)">os.path.normpath</a> before <a href="(stdlib,os.path)">os.path.join</a>.</p>
+
+  </div>
+</div>
+    <div class="footer">
+      <div class="container">
+        <p>^C Interrupted by EOF</p>
+        <p>Made by <a href="https://github.com/pyos">pyos</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
+

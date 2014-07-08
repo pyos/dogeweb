@@ -45,12 +45,11 @@ FULLPAGE = '''<!doctype html>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand">dogeweb</a>
+          <a class="navbar-brand" href="{parent}../">dogeweb</a>
         </div>
         <div class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li><a href="https://github.com/pyos/dogeweb">GitHub</a></li>
-            <li><a href="{parent}../">Main page</a></li>
             <li><a href="{parent}">API docs</a></li>
           </ul>
         </div>

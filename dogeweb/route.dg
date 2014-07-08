@@ -289,6 +289,53 @@ host = router $ *: choices -> req **: k -> next $
     req.abort 404
 
 
+DecoRouter = subclass object where
+  #: Transform a functional-style router into a decorator-style router.
+  #:
+  #: function  :: Router a -- the underlying functional router.
+  #: pass_name :: bool -- whether the router accepts `(smth, name, function)` 3-tuples.
+  #:
+  __init__ = function pass_name ~>
+    @function  = function
+    @pass_name = pass_name
+    @_args     = list!
+    None
+
+  #: Register a route.
+  #:
+  #: add_route :: a (Maybe str) Handler -> b
+  #:
+  add_route = smth name handler ~> @_args.append $ if
+    @pass_name and name => smth, name, handler
+    otherwise           => smth,       handler
+
+  #: Register a route in decorator form. Useless in dg, useful in Python.
+  #:
+  #:   x = r.File()
+  #:
+  #:   @x.route('/')
+  #:   def hello(request)
+  #:       return 'Hello, World!'
+  #:
+  #: route :: a -> Handler -> b
+  #:
+  route = smth ~> bind @add_route smth None
+
+  #: Return a function usable in applications.
+  #:
+  #: handler :: Handler
+  #:
+  handler = ~> @function *: @_args
+
+
+Upgrade = bind DecoRouter upgrade False
+Accept  = bind DecoRouter accept  False
+Method  = bind DecoRouter method  False
+File    = bind DecoRouter file    True
+Dir     = bind DecoRouter dir     True
+Host    = bind DecoRouter host    False
+
+
 ContextAware = subclass object where
   #: Methods added to `Request` objects since they require fields only available in it.
   #:

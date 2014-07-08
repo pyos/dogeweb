@@ -1,0 +1,48 @@
+:description: WebSocket 13 support
+
+
+:class: Message
+  A subclass of `bytes` that encodes a single message.
+
+:attribute: is_ping
+  Should never appear if you're using a [Reader]((this)) (it handles pings automatically.)
+
+:attribute: is_pong
+  Whether this message is a response to a previously sent ping.
+
+:attribute: is_data
+  Whether this message is some binary data.
+
+:attribute: is_text
+  Whether this message is text (in UTF-8, I think?)
+
+:attribute: is_close
+  Whether this message is the last one sent over this channel.
+  The connection has already been closed.
+
+
+:class: Reader
+  A special coroutine-like object that waits for the next message and returns it
+  when used with `yield from`. Raises `asyncio.CancelledError` if the connection
+  gets closed; the first argument of the exception, if it exists, is
+  a [Message]((this)) received before closing the connection (it will have `is_close`
+  set to `True`.)
+
+
+:class: Writer
+  An object that allows one to send messages easily.
+
+:method: ping data
+  Send a ping.
+
+:method: pong data
+  Respond to a ping.
+
+:method: text data
+  Send some text. Note that `data` must still be a `bytes` object.
+
+:method: data data
+  Send some binary data.
+
+:method: close (Optional code) (Optional data)
+  Send a `close` message. **No other messages can be sent after that.**

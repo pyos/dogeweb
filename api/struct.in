@@ -1,0 +1,55 @@
+:description: various helper data structures.
+
+
+:class: MultiDict
+  Like dict, only multi. Most of the normal dict methods are supported, plus:
+
+
+:method: getall k
+  `get` only returns one item; this method returns a list of all items for a given key.
+  If there are none, returns an empty list.
+
+
+:method: popall k
+  `pop` removes one item, this method removes all items. The return value is the same
+  as for `getall`.
+
+
+:method: update init
+  Unlike `dict.update`, this method does not override old values; instead, both
+  the old values and the new values are stored in this dict.
+
+
+:method: replace init
+  This method is closer to `dict.update`; if a key occurs in `init`, the old
+  values for that key are removed.
+
+
+:class: Headers
+  A [MultiDict]((this)) that normalizes its keys (by making them lowercase.)
+
+
+:class: Accept
+  A list of `(value, quality)` pairs sorted in descending order by `quality`.
+  Unlike a normal list, it's not indexed by integers; instead, `accept !! smth`
+  returns the quality assigned to `smth`, or 0 if there is none.
+
+
+:class: File
+  A simple container for files submitted through `multipart/form-data`.
+
+
+:attribute: name
+  The name of this file as specified in `Content-Disposition`. NOTE: it's not safe
+  to use this name without normalizing it first, as it can contain path separators
+  and other unwanted stuff.
+
+
+:attribute: data
+  The contents of this file as a `bytes` object.
+
+
+:method: save target
+  Store this file in a local filesystem.
+
+  This method is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).

@@ -157,7 +157,7 @@ _dispatch_multiple = fn choices options ->
              otherwise     => tuple xs + (_methodcheck h,)
         otherwise => _methodcheck h
       funcs.append $ getattr h 'fget' h
-  functools.update_wrapper (fn *: choices **: options) $ next (iter funcs) fn
+  fn *: choices **: options
 
 
 #: Make the function check whether the method is GET or there was a `method` router
@@ -370,8 +370,8 @@ ContextAware = subclass object where
   #:
   #: url_for :: str ** -> str
   #:
-  url_for = name **: args ~>
-    name   = name.split '.'
+  url_for = __name **: args ~>
+    name   = __name.split '.'
     parent = 1
     while name !! 0 == '' =>
       name.pop 0

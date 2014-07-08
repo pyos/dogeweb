@@ -70,7 +70,7 @@ of <code>(name, value)</code> pairs.</p>
   <div class="container section section-function">
     <h2><span class='decl-name' id='body'>body</span> <span class='decl-arg'>data</span> <span class='decl-arg'>headers</span></h2>
     <p>Parse a request body. <em>This function does not decompress gzip, nor does it
-handle chunked transfer-encoding.</em> <code>headers</code> must be a <a href="(local)">struct.Headers</a>.</p>
+handle chunked transfer-encoding.</em> <code>headers</code> must be a <a href="../struct/#Headers">struct.Headers</a>.</p>
 
 <p>Supported MIME types:</p>
 
@@ -82,7 +82,7 @@ handle chunked transfer-encoding.</em> <code>headers</code> must be a <a href="(
 
 <p>Note that some of these do not support data types available in others; for example,
 only <code>multipart/form-data</code> supports files, and only <code>application/json</code> can
-transfer arrays. In JSON, objects are converted into <a href="(local)">struct.MultiDict</a>s.</p>
+transfer arrays. In JSON, objects are converted into <a href="../struct/#MultiDict">struct.MultiDict</a>s.</p>
 
 <p>Returns an iterable of <code>(name, value)</code> pairs.</p>
 
@@ -110,7 +110,7 @@ of <code>(name, value)</code> pairs.</p>
     <h2><span class='decl-name' id='multipart'>multipart</span> <span class='decl-arg'>data</span> <span class='decl-arg'>boundary</span> <span class='decl-arg decl-arg-opt'>encoding</span></h2>
     <p>Parse a <code>multipart/form-data</code> request body. <code>data</code> must be <code>bytes</code>.
 <code>boundary</code> is an attribute extracted from <code>Content-Type</code>. <code>encoding</code> defaults to
-<code>utf-8</code>. Nested form data is parsed, too. Files are returned as <a href="(local)">struct.File</a>
+<code>utf-8</code>. Nested form data is parsed, too. Files are returned as <a href="../struct/#File">struct.File</a>
 objects. Returns an iterable of <code>(name, value)</code> pairs.</p>
 
   </div>
@@ -118,13 +118,13 @@ objects. Returns an iterable of <code>(name, value)</code> pairs.</p>
 <div class="section-wrapper section-wrapper-function" id="io_request">
   <div class="container section section-function">
     <h2><span class='decl-name' id='io_request'>io_request</span> <span class='decl-arg'>reader</span></h2>
-    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> connected to a transport,
+    <p>Given a <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreader">asyncio.StreamReader</a> connected to a transport,
 attempt to read a single HTTP request from it. If the request is incomplete,
-raises <a href="(stdlib,asyncio-streams)">asyncio.IncompleteReadError</a>. If the request could not
+raises <a href="https://docs.python.org/3/library/asyncio-stream.html#incompletereaderror">asyncio.IncompleteReadError</a>. If the request could not
 be parsed (for example, it&rsquo;s an HTTP/0.9 request), raises <code>ValueError</code>.</p>
 
 <p>Returns a <code>(method, path, version, headers, payload)</code> tuple, where <code>headers</code>
-is a <a href="(local)">struct.Headers</a> and <code>payload</code> is an already decompressed and de-chunked
+is a <a href="../struct/#Headers">struct.Headers</a> and <code>payload</code> is an already decompressed and de-chunked
 <code>bytes</code> object.</p>
 
 <p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
@@ -134,7 +134,7 @@ is a <a href="(local)">struct.Headers</a> and <code>payload</code> is an already
 <div class="section-wrapper section-wrapper-function" id="io_payload_chunked">
   <div class="container section section-function">
     <h2><span class='decl-name' id='io_payload_chunked'>io_payload_chunked</span> <span class='decl-arg'>reader</span></h2>
-    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> connected to a transport,
+    <p>Given a <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreader">asyncio.StreamReader</a> connected to a transport,
 read data with <code>chunked</code> transfer-encoding. The headers preceding it must have already
 been parsed.</p>
 
@@ -147,9 +147,9 @@ been parsed.</p>
 <div class="section-wrapper section-wrapper-function" id="io_response">
   <div class="container section section-function">
     <h2><span class='decl-name' id='io_response'>io_response</span> <span class='decl-arg'>writer</span> <span class='decl-arg'>version</span> <span class='decl-arg'>code</span> <span class='decl-arg'>headers</span> <span class='decl-arg'>body</span></h2>
-    <p>Given a <a href="(stdlib,asyncio-streams)">asyncio.StreamWriter</a> connected to a transport,
+    <p>Given a <a href="https://docs.python.org/3/library/asyncio-stream.html#streamwriter">asyncio.StreamWriter</a> connected to a transport,
 send an HTTP response. <code>version</code> must be a <code>(major, minor)</code> tuple; <code>headers</code> —
-a <a href="(local)">struct.Headers</a> object; <code>body</code> — an iterable of <code>bytes</code>.</p>
+a <a href="../struct/#Headers">struct.Headers</a> object; <code>body</code> — an iterable of <code>bytes</code>.</p>
 
 <p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
 

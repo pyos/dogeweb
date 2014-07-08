@@ -36,11 +36,11 @@
     <div class="section-wrapper section-wrapper-class" id="StreamReaderProtocol">
   <div class="container section section-class">
     <h2><span class='decl-name' id='StreamReaderProtocol'>StreamReaderProtocol</span></h2>
-    <p>Same as <a href="(stdlib,asyncio-streams)">asyncio.StreamReaderProtocol</a>, except the task
+    <p>Same as <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreaderprotocol">asyncio.StreamReaderProtocol</a>, except the task
 spawned in <code>connection_made</code> is stored in the <code>task</code> attribute and cancelled
 in <code>connection_lost</code> instead of being left at the mercy of the garbage collector.</p>
 
-<p>An <a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> is also created automatically;
+<p>An <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreader">asyncio.StreamReader</a> is also created automatically;
 no need to pass your own.</p>
 
   </div>
@@ -58,8 +58,8 @@ in the next <code>delay</code> seconds. If not, cancel it (and raise <code>async
 <div class="section-wrapper section-wrapper-function" id="start_server">
   <div class="container section section-function">
     <h2><span class='decl-name' id='start_server'>start_server</span> <span class='decl-arg'>callback</span> <span class='decl-arg'>...</span></h2>
-    <p>Same as <a href="(stdlib,asyncio-streams)">asyncio.start_server</a>, but uses
-<a href="(this)">StreamReaderProtocol</a> instead of the asyncio-provided one.
+    <p>Same as <a href="https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server">asyncio.start_server</a>, but uses
+<a href="#StreamReaderProtocol">StreamReaderProtocol</a> instead of the asyncio-provided one.
 Also, this function accepts a list of sockets as its <code>sock</code> argument
 (unlike <code>asyncio.start_server</code>, which can only accept one socket.)</p>
 

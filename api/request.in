@@ -3,7 +3,7 @@
 
 :class: Request
   A single HTTP request. Instances of this class are created by
-  [main.Server]((local)) automatically; you don't need to do that yourself.
+  [app](../#app) automatically; you don't need to do that yourself.
 
 :attribute: version
   The HTTP version the client used as a `(major, minor)` tuple.
@@ -13,24 +13,24 @@
 
 :attribute: path
   The path requested by the client. Relative to the current routine module
-  (see [route.dir]((local)).)
+  (see [route.dir](../route/#dir).)
 
 :attribute: headers
-  Additional HTTP headers as a [struct.Headers]((local)).
+  Additional HTTP headers as a [struct.Headers](../struct/#Headers).
 
 :attribute: payload
   The request body as a `bytes` object.
 
 :attribute: handler
   The top-level handler this request was passed to (the one you created an instance of
-  [main.Server]((local)) with.)
+  [app](../#app) with.)
 
 :attribute: loop
   The [asyncio event loop](https://docs.python.org/3/library/asyncio-eventloop.html)
   everything is running in.
 
 :attribute: log
-  A [logging.Logger]((stdlib,logging)) named `dogeweb`.
+  A [logging.Logger](https://docs.python.org/3/library/logging.html#logging.Logger) named `dogeweb`.
 
 :attribute: accept
   Parsed values of various `Accept` headers.
@@ -40,7 +40,7 @@
     * `accept.language` -- `Accept-Language`
     * `accept.encoding` -- `Accept-Encoding`
 
-  All of these are represented by [struct.Accept]((local)) dict-like objects.
+  All of these are represented by [struct.Accept](../struct/#Accept) dict-like objects.
   MIME types, charsets, or whatever not specified in the request will have a quality
   of 0.
 
@@ -48,7 +48,7 @@
   All cookies from this request as a dict.
 
 :attribute: args
-  Form fields passed through the URL (the part after `?`) as a [struct.MultiDict]((local)).
+  Form fields passed through the URL (the part after `?`) as a [struct.MultiDict](../struct/#MultiDict).
 
 :attribute: form
   Form fields passed through the request body. This includes files, too.
@@ -102,21 +102,21 @@
 
 :method: websocket handler
   Initiate a websocket handshake. May abort the request with 400; if not, returns a
-  [response.Response]((local)) with appropriate headers. After these are sent,
-  `handler` will be called with a reader and a writer. See [websocket.Reader]((local))
-  and [websocket.Writer]((local)) for details.
+  [response.Response](../response/#Response) with appropriate headers. After these are sent,
+  `handler` will be called with a reader and a writer. See [websocket.Reader](../websocket/#Reader)
+  and [websocket.Writer](../websocket/#Writer) for details.
 
 :note:
   The following methods do not use any info from the request; they're shortcuts.
 
 :method: abort code (Optional info) (Optional headers)
-  Same as [response.abort]((local)).
+  Same as [response.abort](../response/#abort).
 
 :method: redirect path (Optional info) (Optional code)
-  Same as [response.redirect]((local)).
+  Same as [response.redirect](../response/#redirect).
 
 :method: static path (Optional attachment) (Optional headers)
-  Same as [response.static]((local)).
+  Same as [response.static](../response/#static).
 
 :method: jsonify smth
-  Same as [response.jsonify]((local)).
+  Same as [response.jsonify](../response/#jsonify).

@@ -24,7 +24,7 @@
 
 :function: body data headers
   Parse a request body. *This function does not decompress gzip, nor does it
-  handle chunked transfer-encoding.* `headers` must be a [struct.Headers]((local)).
+  handle chunked transfer-encoding.* `headers` must be a [struct.Headers](../struct/#Headers).
 
   Supported MIME types:
 
@@ -34,7 +34,7 @@
 
   Note that some of these do not support data types available in others; for example,
   only `multipart/form-data` supports files, and only `application/json` can
-  transfer arrays. In JSON, objects are converted into [struct.MultiDict]((local))s.
+  transfer arrays. In JSON, objects are converted into [struct.MultiDict](../struct/#MultiDict)s.
 
   Returns an iterable of `(name, value)` pairs.
 
@@ -53,25 +53,25 @@
 :function: multipart data boundary (Optional encoding)
   Parse a `multipart/form-data` request body. `data` must be `bytes`.
   `boundary` is an attribute extracted from `Content-Type`. `encoding` defaults to
-  `utf-8`. Nested form data is parsed, too. Files are returned as [struct.File]((local))
+  `utf-8`. Nested form data is parsed, too. Files are returned as [struct.File](../struct/#File)
   objects. Returns an iterable of `(name, value)` pairs.
 
 
 :function: io_request reader
-  Given a [asyncio.StreamReader]((stdlib,asyncio-streams)) connected to a transport,
+  Given a [asyncio.StreamReader](https://docs.python.org/3/library/asyncio-stream.html#streamreader) connected to a transport,
   attempt to read a single HTTP request from it. If the request is incomplete,
-  raises [asyncio.IncompleteReadError]((stdlib,asyncio-streams)). If the request could not
+  raises [asyncio.IncompleteReadError](https://docs.python.org/3/library/asyncio-stream.html#incompletereaderror). If the request could not
   be parsed (for example, it's an HTTP/0.9 request), raises `ValueError`.
 
   Returns a `(method, path, version, headers, payload)` tuple, where `headers`
-  is a [struct.Headers]((local)) and `payload` is an already decompressed and de-chunked
+  is a [struct.Headers](../struct/#Headers) and `payload` is an already decompressed and de-chunked
   `bytes` object.
 
   This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
 
 
 :function: io_payload_chunked reader
-  Given a [asyncio.StreamReader]((stdlib,asyncio-streams)) connected to a transport,
+  Given a [asyncio.StreamReader](https://docs.python.org/3/library/asyncio-stream.html#streamreader) connected to a transport,
   read data with `chunked` transfer-encoding. The headers preceding it must have already
   been parsed.
 
@@ -81,8 +81,8 @@
 
 
 :function: io_response writer version code headers body
-  Given a [asyncio.StreamWriter]((stdlib,asyncio-streams)) connected to a transport,
+  Given a [asyncio.StreamWriter](https://docs.python.org/3/library/asyncio-stream.html#streamwriter) connected to a transport,
   send an HTTP response. `version` must be a `(major, minor)` tuple; `headers` —
-  a [struct.Headers]((local)) object; `body` — an iterable of `bytes`.
+  a [struct.Headers](../struct/#Headers) object; `body` — an iterable of `bytes`.
 
   This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).

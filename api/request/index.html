@@ -37,7 +37,7 @@
   <div class="container section section-class">
     <h2><span class='decl-name' id='Request'>Request</span></h2>
     <p>A single HTTP request. Instances of this class are created by
-<a href="(local)">main.Server</a> automatically; you don&rsquo;t need to do that yourself.</p>
+<a href="../#app">app</a> automatically; you don&rsquo;t need to do that yourself.</p>
 
   </div>
 </div>
@@ -59,14 +59,14 @@
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='path'>path</span></h2>
     <p>The path requested by the client. Relative to the current routine module
-(see <a href="(local)">route.dir</a>.)</p>
+(see <a href="../route/#dir">route.dir</a>.)</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-attribute" id="headers">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='headers'>headers</span></h2>
-    <p>Additional HTTP headers as a <a href="(local)">struct.Headers</a>.</p>
+    <p>Additional HTTP headers as a <a href="../struct/#Headers">struct.Headers</a>.</p>
 
   </div>
 </div>
@@ -81,7 +81,7 @@
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='handler'>handler</span></h2>
     <p>The top-level handler this request was passed to (the one you created an instance of
-<a href="(local)">main.Server</a> with.)</p>
+<a href="../#app">app</a> with.)</p>
 
   </div>
 </div>
@@ -96,7 +96,7 @@ everything is running in.</p>
 <div class="section-wrapper section-wrapper-attribute" id="log">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='log'>log</span></h2>
-    <p>A <a href="(stdlib,logging)">logging.Logger</a> named <code>dogeweb</code>.</p>
+    <p>A <a href="https://docs.python.org/3/library/logging.html#logging.Logger">logging.Logger</a> named <code>dogeweb</code>.</p>
 
   </div>
 </div>
@@ -112,7 +112,7 @@ everything is running in.</p>
 <li><code>accept.encoding</code> &ndash; <code>Accept-Encoding</code></li>
 </ul>
 
-<p>All of these are represented by <a href="(local)">struct.Accept</a> dict-like objects.
+<p>All of these are represented by <a href="../struct/#Accept">struct.Accept</a> dict-like objects.
 MIME types, charsets, or whatever not specified in the request will have a quality
 of 0.</p>
 
@@ -128,7 +128,7 @@ of 0.</p>
 <div class="section-wrapper section-wrapper-attribute" id="args">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='args'>args</span></h2>
-    <p>Form fields passed through the URL (the part after <code>?</code>) as a <a href="(local)">struct.MultiDict</a>.</p>
+    <p>Form fields passed through the URL (the part after <code>?</code>) as a <a href="../struct/#MultiDict">struct.MultiDict</a>.</p>
 
   </div>
 </div>
@@ -216,9 +216,9 @@ url_for &#39;main.userinfo&#39; name: &#39;spam&#39; -&gt; &#39;/u/spam/&#39;
   <div class="container section section-method">
     <h2><span class='decl-name' id='websocket'>websocket</span> <span class='decl-arg'>handler</span></h2>
     <p>Initiate a websocket handshake. May abort the request with 400; if not, returns a
-<a href="(local)">response.Response</a> with appropriate headers. After these are sent,
-<code>handler</code> will be called with a reader and a writer. See <a href="(local)">websocket.Reader</a>
-and <a href="(local)">websocket.Writer</a> for details.</p>
+<a href="../response/#Response">response.Response</a> with appropriate headers. After these are sent,
+<code>handler</code> will be called with a reader and a writer. See <a href="../websocket/#Reader">websocket.Reader</a>
+and <a href="../websocket/#Writer">websocket.Writer</a> for details.</p>
 
   </div>
 </div>
@@ -232,28 +232,28 @@ and <a href="(local)">websocket.Writer</a> for details.</p>
 <div class="section-wrapper section-wrapper-method" id="abort">
   <div class="container section section-method">
     <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
-    <p>Same as <a href="(local)">response.abort</a>.</p>
+    <p>Same as <a href="../response/#abort">response.abort</a>.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="redirect">
   <div class="container section section-method">
     <h2><span class='decl-name' id='redirect'>redirect</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>code</span></h2>
-    <p>Same as <a href="(local)">response.redirect</a>.</p>
+    <p>Same as <a href="../response/#redirect">response.redirect</a>.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="static">
   <div class="container section section-method">
     <h2><span class='decl-name' id='static'>static</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>attachment</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
-    <p>Same as <a href="(local)">response.static</a>.</p>
+    <p>Same as <a href="../response/#static">response.static</a>.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="jsonify">
   <div class="container section section-method">
     <h2><span class='decl-name' id='jsonify'>jsonify</span> <span class='decl-arg'>smth</span></h2>
-    <p>Same as <a href="(local)">response.jsonify</a>.</p>
+    <p>Same as <a href="../response/#jsonify">response.jsonify</a>.</p>
 
   </div>
 </div>

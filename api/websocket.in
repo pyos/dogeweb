@@ -5,7 +5,7 @@
   A subclass of `bytes` that encodes a single message.
 
 :attribute: is_ping
-  Should never appear if you're using a [Reader]((this)) (it handles pings automatically.)
+  Should never appear if you're using a [Reader](#Reader) (it handles pings automatically.)
 
 :attribute: is_pong
   Whether this message is a response to a previously sent ping.
@@ -25,7 +25,7 @@
   A special coroutine-like object that waits for the next message and returns it
   when used with `yield from`. Raises `asyncio.CancelledError` if the connection
   gets closed; the first argument of the exception, if it exists, is
-  a [Message]((this)) received before closing the connection (it will have `is_close`
+  a [Message](#Message) received before closing the connection (it will have `is_close`
   set to `True`.)
 
 

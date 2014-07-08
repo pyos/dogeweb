@@ -27,13 +27,13 @@
 
 
 :function: pathregex path
-  Given a path route with wildcards, create a regex according to [wildcards]((this)).
+  Given a path route with wildcards, create a regex according to [wildcards](#wildcards).
   Returns a `(regex, parsers)` tuple where `parsers` is a dict mapping group names
   to parser functions from `wildcards`.
 
 
 :function: concrete args path
-  Sort of a reverse of [pathregex]((this)); given a dict that maps group names
+  Sort of a reverse of [pathregex](#pathregex); given a dict that maps group names
   to values and a path route with wildcards, construct a complete path.
   For example, calling this with `{'name': 'spam'}` and `"/u/<name>/"`
   would result in `"/u/spam/"`.
@@ -69,68 +69,19 @@
       would;
 
     * can handle requests with methods other than `GET` and `HEAD` even if outside
-      a [method]((this)) router (normal functions would raise HTTP 405).
+      a [method](#method) router (normal functions would raise HTTP 405).
 
 
 :note:
   In all of the functions outlined below,
   a *handler* is a function that accepts a request as an argument and returns
-  a response (or something else supported by [response.responsify]((local)).)
+  a response (or something else supported by [response.responsify](../response/#responsify).)
   Optionally, it may also accept some keyword arguments that correspond to wildcards
   in paths; for example, if you have a route for `/u/<name>`, its handler must
   accept a keyword argument `name`.
 
 
-:function: upgrade *: routes
-  Route on HTTP `Upgrade` header. Routes must be `(protocol, handler)` tuples.
-  If the client does not wish to switch protocols (i.e. did not specify an `Upgrade`
-  header), `http` is used.
-
-
-:function: accept *: routes
-  Route on HTTP `Accept` header. Routes must be `(mime, handler)` tuples; the handler
-  that corresponds to a MIME type with highest quality is chosen. See
-  [request.Request.accept]((local)).
-
-
-:function: method *: routes
-  Route on HTTP method. Routes must be `(method, handler)` tuples. If this router is
-  not used, HTTP 405 is raised for methods other than `GET` and `HEAD`.
-
-
-:function: file *: routes
-  Route on the requested path. Routes must be `(path, handler)` or `(path, name, handler)`
-  tuples. The `name` item is used for constructing URLs; see [request.Request.url_for]((local)).
-  `path` may contain wildcards; see [WILDCARDRE]((this)), [wildcards]((this)), and
-  [pathregex]((this)). If a route ends with a slash but the requested path does not
-  (but otherwise matches the regex), the client is redirected to a path that contains
-  the slash. (For example, given a route for `/smth/`, a redirect from `/smth` to
-  `/smth/` is created automatically.)
-
-
-:function: dir *: routes
-  Route between modules. The arguments are the same as for [file]((this)), except the paths
-  must end with slashes. Unlike `file`, routes do not have to match the whole path,
-  only the beginning of it. Note that [file]((this)) routes relative to the current module;
-  for example, if you have a module `/users/` and you wish to match `/users/login`,
-  this is the structure you want:
-
-  ```dg
-  handler = r.dir
-    '/users/', r.file
-      '/login', ...
-  ```
-
-
-:function: host *: routes
-  Route on HTTP `Host` header. Routes must be `(host, handler)` tuples; the first
-  handler that corresponds to a non-strict superdomain is used. (For example,
-  `spam.com` would match both `spam.com` and `eggs.spam.com`, but not `eggs.org`
-  or `spam.com:8080`.)
-
-
-:note:
-  If anonymous functions are not your style, all of the above routers are
+  If anonymous functions are not your style, all of these routers are
   available as decorators.
 
     * `Upgrade` → `upgrade`
@@ -165,3 +116,59 @@
   ```python
   app = dogeweb.app(h.handler)
   ```
+
+  The result is roughly equivalent to
+
+  ```dg
+  app = dogeweb.app $ dogeweb.route.file
+    '/',       'hello',      ~> 'Hello, World!'
+    '/hello/', 'hello_copy', ~> 'Hello, World!'
+  ```
+
+
+:function: upgrade *: routes
+  Route on HTTP `Upgrade` header. Routes must be `(protocol, handler)` tuples.
+  If the client does not wish to switch protocols (i.e. did not specify an `Upgrade`
+  header), `http` is used.
+
+
+:function: accept *: routes
+  Route on HTTP `Accept` header. Routes must be `(mime, handler)` tuples; the handler
+  that corresponds to a MIME type with highest quality is chosen. See
+  [request.Request.accept](../request/#accept).
+
+
+:function: method *: routes
+  Route on HTTP method. Routes must be `(method, handler)` tuples. If this router is
+  not used, HTTP 405 is raised for methods other than `GET` and `HEAD`.
+
+
+:function: file *: routes
+  Route on the requested path. Routes must be `(path, handler)` or `(path, name, handler)`
+  tuples. The `name` item is used for constructing URLs; see [request.Request.url_for](../request/#url_for).
+  `path` may contain wildcards; see [WILDCARDRE](#WILDCARDRE), [wildcards](#wildcards), and
+  [pathregex](#pathregex). If a route ends with a slash but the requested path does not
+  (but otherwise matches the regex), the client is redirected to a path that contains
+  the slash. (For example, given a route for `/smth/`, a redirect from `/smth` to
+  `/smth/` is created automatically.)
+
+
+:function: dir *: routes
+  Route between modules. The arguments are the same as for [file](#file), except the paths
+  must end with slashes. Unlike `file`, routes do not have to match the whole path,
+  only the beginning of it. Note that [file](#file) routes relative to the current module;
+  for example, if you have a module `/users/` and you wish to match `/users/login`,
+  this is the structure you want:
+
+  ```dg
+  handler = r.dir
+    '/users/', r.file
+      '/login', ...
+  ```
+
+
+:function: host *: routes
+  Route on HTTP `Host` header. Routes must be `(host, handler)` tuples; the first
+  handler that corresponds to a non-strict superdomain is used. (For example,
+  `spam.com` would match both `spam.com` and `eggs.spam.com`, but not `eggs.org`
+  or `spam.com:8080`.)

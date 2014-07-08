@@ -2,9 +2,9 @@
 
 
 :function: responsify smth
-  Convert some object into a [Response]((this)). Supported objects are:
+  Convert some object into a [Response](#Response). Supported objects are:
   
-    * [Response]((this)) objects (returned as-is);
+    * [Response](#Response) objects (returned as-is);
     * strings (assumed to be utf-8 HTML);
     * bytestrings (assumed to be HTML with a `<meta>` tag specifying the encoding);
     * `(code, *headers, something_else)` tuples where `something_else` is
@@ -17,7 +17,7 @@
 
 
 :function: jsonify smth
-  Encode a JSON object with `json.dumps`, return a [Response]((this))
+  Encode a JSON object with `json.dumps`, return a [Response](#Response)
   with an appropriate `Content-Type` set.
 
 
@@ -28,7 +28,7 @@
 :attribute: code
 :attribute: description
 :attribute: headers
-  Now as a [struct.Headers]((local)).
+  Now as a [struct.Headers](../struct/#Headers).
 
 :attribute: name
   What this error code means according to the HTTP standard.
@@ -44,7 +44,7 @@
   A list of chunks.
 
 :attribute: headers
-  Now as a [struct.Headers]((local)).
+  Now as a [struct.Headers](../struct/#Headers).
 
 :attribute: defheaders
   A property that returns some headers. These will be sent to the client
@@ -55,21 +55,21 @@
 
 :method: communicate reader writer
   Called after the response is sent to the client. `reader` is an
-  [asyncio.StreamReader]((stdlib,asyncio-streams)) the request was received from,
-  `writer` is an [asyncio.StreamWriter]((stdlib,asyncio-streams)) the response was
+  [asyncio.StreamReader](https://docs.python.org/3/library/asyncio-stream.html#streamreader) the request was received from,
+  `writer` is an [asyncio.StreamWriter](https://docs.python.org/3/library/asyncio-stream.html#streamwriter) the response was
   sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.)
 
 
 :class: FileResponse code path headers (Optional bufsize)
   A response that sends data from a local file instead of a string.
-  Inherits [Response]((this)). If the file does not exist or is not readable,
+  Inherits [Response](#Response). If the file does not exist or is not readable,
   constructor throws HTTP 404.
 
 :attribute: path
 :attribute: bufsize
 :attribute: defheaders
-  Same as [Response.defheaders]((this)), except `Content-Length` is determined
-  via [os.stat]((stdlib,os)).
+  Same as [Response.defheaders](#Response), except `Content-Length` is determined
+  via [os.stat](https://docs.python.org/3/library/os.html#os.stat).
 
 :attribute: data
   A property that returns an iterator of chunks, the closes the file
@@ -77,7 +77,7 @@
 
 
 :function: abort code (Optional info) (Optional headers)
-  Raise [Abort]((this)). Accepts the same arguments.
+  Raise [Abort](#Abort). Accepts the same arguments.
 
 
 :function: redirect path (Optional info) (Optional code)
@@ -86,11 +86,12 @@
 
 
 :function: static path (Optional attachment) (Optional headers)
-  Guess the MIME type from the file name, create a [FileResponse]((this)).
+  Guess the MIME type from the file name, create a [FileResponse](#FileResponse).
   If `attachment` is true, `Content-Disposition` is set to `attachment`
   (meaning browsers will download the file instead of attempting to display it.)
 
   **NOTE**: this function will happily send *any* file; normalize the filename first
   if you've received it from an unknown source! For example, a client can easily
   request `/static/../../../../../../../etc/passwd`; to avoid this,
-  call [os.path.normpath]((stdlib,os.path)) before [os.path.join]((stdlib,os.path)).
+  call [os.path.normpath](https://docs.python.org/3/library/os.path.html#os.path.normpath)
+  before [os.path.join](https://docs.python.org/3/library/os.path.html#os.path.join).

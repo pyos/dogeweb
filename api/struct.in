@@ -26,7 +26,7 @@
 
 
 :class: Headers
-  A [MultiDict]((this)) that normalizes its keys (by making them lowercase.)
+  A [MultiDict](#MultiDict) that normalizes its keys (by making them lowercase.)
 
 
 :class: Accept

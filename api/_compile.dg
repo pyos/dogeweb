@@ -109,9 +109,9 @@ compile = level input ->
 
 toc = mask -> TOCLIST.format $ ''.join $
   where for f in sorted (glob.glob mask) =>
-    with fd = open f =>
-      name  = f.rpartition '.' !! 0
-      descr = '?'
+    name  = f.rpartition '.' !! 0
+    descr = '?'
+    name != 'index' => with fd = open f =>
       for (header, first, data) in sections fd.read! =>
         header == 'description' => descr = first
       yield $ TOCITEM.format name descr

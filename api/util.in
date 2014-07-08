@@ -2,11 +2,11 @@
 
 
 :class: StreamReaderProtocol
-  Same as [asyncio.StreamReaderProtocol]((stdlib,asyncio-streams)), except the task
+  Same as [asyncio.StreamReaderProtocol](https://docs.python.org/3/library/asyncio-stream.html#streamreaderprotocol), except the task
   spawned in `connection_made` is stored in the `task` attribute and cancelled
   in `connection_lost` instead of being left at the mercy of the garbage collector.
 
-  An [asyncio.StreamReader]((stdlib,asyncio-streams)) is also created automatically;
+  An [asyncio.StreamReader](https://docs.python.org/3/library/asyncio-stream.html#streamreader) is also created automatically;
   no need to pass your own.
 
 
@@ -18,8 +18,8 @@
 
 
 :function: start_server callback (...)
-  Same as [asyncio.start_server]((stdlib,asyncio-streams)), but uses
-  [StreamReaderProtocol]((this)) instead of the asyncio-provided one.
+  Same as [asyncio.start_server](https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server), but uses
+  [StreamReaderProtocol](#StreamReaderProtocol) instead of the asyncio-provided one.
   Also, this function accepts a list of sockets as its `sock` argument
   (unlike `asyncio.start_server`, which can only accept one socket.)
 

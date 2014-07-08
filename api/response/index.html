@@ -36,10 +36,10 @@
     <div class="section-wrapper section-wrapper-function" id="responsify">
   <div class="container section section-function">
     <h2><span class='decl-name' id='responsify'>responsify</span> <span class='decl-arg'>smth</span></h2>
-    <p>Convert some object into a <a href="(this)">Response</a>. Supported objects are:</p>
+    <p>Convert some object into a <a href="#Response">Response</a>. Supported objects are:</p>
 
 <ul>
-<li><a href="(this)">Response</a> objects (returned as-is);</li>
+<li><a href="#Response">Response</a> objects (returned as-is);</li>
 <li>strings (assumed to be utf-8 HTML);</li>
 <li>bytestrings (assumed to be HTML with a <code>&lt;meta&gt;</code> tag specifying the encoding);</li>
 <li><code>(code, *headers, something_else)</code> tuples where <code>something_else</code> is
@@ -56,7 +56,7 @@ that return any of the above.</li>
 <div class="section-wrapper section-wrapper-function" id="jsonify">
   <div class="container section section-function">
     <h2><span class='decl-name' id='jsonify'>jsonify</span> <span class='decl-arg'>smth</span></h2>
-    <p>Encode a JSON object with <code>json.dumps</code>, return a <a href="(this)">Response</a>
+    <p>Encode a JSON object with <code>json.dumps</code>, return a <a href="#Response">Response</a>
 with an appropriate <code>Content-Type</code> set.</p>
 
   </div>
@@ -84,7 +84,7 @@ with an appropriate <code>Content-Type</code> set.</p>
 <div class="section-wrapper section-wrapper-attribute" id="headers">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='headers'>headers</span></h2>
-    <p>Now as a <a href="(local)">struct.Headers</a>.</p>
+    <p>Now as a <a href="../struct/#Headers">struct.Headers</a>.</p>
 
   </div>
 </div>
@@ -125,7 +125,7 @@ can be converted into a dict.</p>
 <div class="section-wrapper section-wrapper-attribute" id="headers">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='headers'>headers</span></h2>
-    <p>Now as a <a href="(local)">struct.Headers</a>.</p>
+    <p>Now as a <a href="../struct/#Headers">struct.Headers</a>.</p>
 
   </div>
 </div>
@@ -146,8 +146,8 @@ unless overriden in the constructor. By default, these are:</p>
   <div class="container section section-method">
     <h2><span class='decl-name' id='communicate'>communicate</span> <span class='decl-arg'>reader</span> <span class='decl-arg'>writer</span></h2>
     <p>Called after the response is sent to the client. <code>reader</code> is an
-<a href="(stdlib,asyncio-streams)">asyncio.StreamReader</a> the request was received from,
-<code>writer</code> is an <a href="(stdlib,asyncio-streams)">asyncio.StreamWriter</a> the response was
+<a href="https://docs.python.org/3/library/asyncio-stream.html#streamreader">asyncio.StreamReader</a> the request was received from,
+<code>writer</code> is an <a href="https://docs.python.org/3/library/asyncio-stream.html#streamwriter">asyncio.StreamWriter</a> the response was
 sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.)</p>
 
   </div>
@@ -156,7 +156,7 @@ sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.
   <div class="container section section-class">
     <h2><span class='decl-name' id='FileResponse'>FileResponse</span> <span class='decl-arg'>code</span> <span class='decl-arg'>path</span> <span class='decl-arg'>headers</span> <span class='decl-arg decl-arg-opt'>bufsize</span></h2>
     <p>A response that sends data from a local file instead of a string.
-Inherits <a href="(this)">Response</a>. If the file does not exist or is not readable,
+Inherits <a href="#Response">Response</a>. If the file does not exist or is not readable,
 constructor throws HTTP 404.</p>
 
   </div>
@@ -176,8 +176,8 @@ constructor throws HTTP 404.</p>
 <div class="section-wrapper section-wrapper-attribute" id="defheaders">
   <div class="container section section-attribute">
     <h2><span class='decl-name' id='defheaders'>defheaders</span></h2>
-    <p>Same as <a href="(this)">Response.defheaders</a>, except <code>Content-Length</code> is determined
-via <a href="(stdlib,os)">os.stat</a>.</p>
+    <p>Same as <a href="#Response">Response.defheaders</a>, except <code>Content-Length</code> is determined
+via <a href="https://docs.python.org/3/library/os.html#os.stat">os.stat</a>.</p>
 
   </div>
 </div>
@@ -192,7 +192,7 @@ after yielding the last one.</p>
 <div class="section-wrapper section-wrapper-function" id="abort">
   <div class="container section section-function">
     <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
-    <p>Raise <a href="(this)">Abort</a>. Accepts the same arguments.</p>
+    <p>Raise <a href="#Abort">Abort</a>. Accepts the same arguments.</p>
 
   </div>
 </div>
@@ -207,14 +207,15 @@ By default, <code>code</code> is 302 (Found).</p>
 <div class="section-wrapper section-wrapper-function" id="static">
   <div class="container section section-function">
     <h2><span class='decl-name' id='static'>static</span> <span class='decl-arg'>path</span> <span class='decl-arg decl-arg-opt'>attachment</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
-    <p>Guess the MIME type from the file name, create a <a href="(this)">FileResponse</a>.
+    <p>Guess the MIME type from the file name, create a <a href="#FileResponse">FileResponse</a>.
 If <code>attachment</code> is true, <code>Content-Disposition</code> is set to <code>attachment</code>
 (meaning browsers will download the file instead of attempting to display it.)</p>
 
 <p><strong>NOTE</strong>: this function will happily send <em>any</em> file; normalize the filename first
 if you&rsquo;ve received it from an unknown source! For example, a client can easily
 request <code>/static/../../../../../../../etc/passwd</code>; to avoid this,
-call <a href="(stdlib,os.path)">os.path.normpath</a> before <a href="(stdlib,os.path)">os.path.join</a>.</p>
+call <a href="https://docs.python.org/3/library/os.path.html#os.path.normpath">os.path.normpath</a>
+before <a href="https://docs.python.org/3/library/os.path.html#os.path.join">os.path.join</a>.</p>
 
   </div>
 </div>

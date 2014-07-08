@@ -305,9 +305,11 @@ DecoRouter = subclass object where
   #:
   #: add_route :: a (Maybe str) Handler -> b
   #:
-  add_route = smth name handler ~> @_args.append $ if
-    @pass_name and name => smth, name, handler
-    otherwise           => smth,       handler
+  add_route = smth name handler ~>
+    @_args.append $ if
+      @pass_name and name => smth, name, handler
+      otherwise           => smth,       handler
+    handler
 
   #: Register a route in decorator form. Useless in dg, useful in Python.
   #:

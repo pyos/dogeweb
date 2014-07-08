@@ -1,4 +1,4 @@
-:description: [gunicorn](http://gunicorn.org/) compatibility
+:description: gunicorn.org compatibility
 
 
 :class: Worker

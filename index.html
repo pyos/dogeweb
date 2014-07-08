@@ -9,7 +9,7 @@
     <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
 
-    <script>
+    <!--script>
       $(function () {
         $('[data-load]').each(function () {
           var self = $(this);
@@ -17,7 +17,7 @@
           $.get(href, function (data) { self.replaceWith(data); });
         });
       });
-    </script>
+    </script-->
 
     <style>
       html, body {
@@ -150,17 +150,48 @@
 
       <div class="row">
         <h3 class="text-center">Simple</h3>
-        <div data-load="index.hello-world.html"></div>
+        <div class="highlight"><pre><span class="text-muted">import &#39;/dogeweb&#39;</span>
+<span class="text-muted">import &#39;/dogeweb/r&#39;</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">app</span> <span class="o">$</span> <span class="n">r</span><span class="o">.</span><span class="n">file</span>
+  <span class="s">&#39;/&#39;</span><span class="o">,</span>   <span class="o">~&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
+  <span class="s">&#39;/u/&#39;</span><span class="o">,</span> <span class="o">~&gt;</span> <span class="s">&#39;Hello, Universe!&#39;</span>
+
+<span class="text-muted">if __name__ == &quot;__main__&quot; =&gt; app.run '0.0.0.0' 8000</span>
+</pre></div>
       </div>
 
       <div class="row">
         <h3 class="text-center">Modern</h3>
-        <div data-load="index.websocket.html"></div>
+        <div class="highlight"><pre><span class="text-muted">wssrv = r.upgrade</span>
+  <span class="text-muted">'http',      ~> @abort 405</span>
+  <span class="s">&#39;websocket&#39;</span><span class="o">,</span> <span class="o">~&gt;</span> <span class="o">@</span><span class="n">websocket</span> <span class="o">$</span> <span class="nb">input</span> <span class="n">output</span> <span class="o">-&gt;</span>
+    <span class="n">outputs</span><span class="o">.</span><span class="n">add</span> <span class="n">output</span>
+    <span class="kr">except
+      <span class="n">err</span> <span class="o">=&gt;</span> <span class="kr">while</span> <span class="cb">True</span> <span class="o">=&gt;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="kr">yield</span> <span class="n">from</span> <span class="n">f</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">is_data</span> <span class="o">=&gt;</span> <span class="kr">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outputs</span> <span class="o">=&gt;</span> <span class="n">o</span><span class="o">.</span><span class="n">data</span> <span class="n">msg</span>
+      <span class="kr">finally</span> <span class="o">=&gt;</span> <span class="n">outputs</span><span class="o">.</span><span class="n">remove</span> <span class="n">output</span>
+</pre></div>
       </div>
 
       <div class="row">
         <h3 class="text-center">Fast</h3>
-        <div data-load="index.wrk.html"></div>
+        <div class="highlight"><pre><span class="text-muted"># <a href="https://github.com/pyos/yoboard">yoboard</a> @ gunicorn+flask:</span>
+<span class="nv">$ </span>wrk -c <span class="m">50</span> -t <span class="m">5</span> -d <span class="m">30</span> http://127.0.0.1:8001/
+Requests/sec:   3745.77
+<span class="text-muted"># yoboard @ gunicorn+dogeweb:</span>
+<span class="nv">$ </span>wrk -c <span class="m">50</span> -t <span class="m">5</span> -d <span class="m">30</span> http://127.0.0.1:8002/
+Requests/sec:   6328.94
+</pre></div>
+      </div>
+
+      <div class="row">
+        <h3 class="text-center">
+          <a href="api/">Read the docs</a> |
+          <a href="https://github.com/pyos/dogeweb">Read the code</a>
+        </h3>
+        <div class="highlight"><pre><span class="n">pip install</span> <span class="o">https://github.com/pyos/dogeweb/zipball/master</span></pre></div>
       </div>
 
       <footer class="text-muted">

@@ -1,9 +1,0 @@
-wssrv = r.upgrade
-  'http',      ~> @abort 405
-  'websocket', ~> @websocket $ input output ->
-    outputs.add output
-    for f in input =>
-      msg = except err => yield from f
-                   err :: GeneratorExit => break!
-      msg.is_data => for o in outputs => o.data msg
-    outputs.remove output

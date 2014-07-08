@@ -74,7 +74,7 @@
   via [os.stat](https://docs.python.org/3/library/os.html#os.stat).
 
 :attribute: data
-  A property that returns an iterator of chunks, the closes the file
+  A property that returns an iterator of chunks, then closes the file
   after yielding the last one.
 
 

@@ -112,9 +112,12 @@ abort = code info: '' headers: () -> raise $ Abort code info headers
 
 #: Issue a 302 Found. The client is redirected to a new URL.
 #:
-#: redirect :: str (Optional str) (Optional int) -> a
+#: redirect :: str (Optional str) (Optional int) (Optional (dict str str)) -> a
 #:
-redirect = path info: '' code: 302 -> raise $ Abort code info (('location', path),)
+redirect = path info: '' code: 302 headers: () ->
+  exc = Abort code info headers
+  exc.headers !! 'location' = path
+  raise exc
 
 
 #: Serve a single static file.

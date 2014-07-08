@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 for f in *.in; do
   d="${f%.*}"
+  d="${d#_}"
   if [ "$d" = "index" ]; then
     t="index.html"
     d="dogeweb"

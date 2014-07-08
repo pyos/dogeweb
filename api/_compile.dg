@@ -34,7 +34,7 @@ FULLPAGE = '''<!doctype html>
     <title>{name} - {descr}</title>
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css">
-    <link rel="stylesheet" href="{parent}_style.css">
+    <link rel="stylesheet" href="{parent}style.css">
     <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
   </head>
@@ -111,7 +111,7 @@ compile = level input ->
 
 toc = mask -> TOCLIST.format $ ''.join $
   where for f in sorted (glob.glob mask) =>
-    name  = f.rpartition '.' !! 0
+    name  = (f.lstrip '_').rpartition '.' !! 0
     descr = '?'
     name != 'index' => with fd = open f =>
       for (header, first, data) in sections fd.read! =>

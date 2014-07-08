@@ -188,26 +188,23 @@ type-checking.</p>
 and some arguments, construct an URL that points to that route.</p>
 
 <p>For example, given this route structure:</p>
-
-<pre><code>/hello/    -&gt; modhello (module)
+<pre>/hello/    -&gt; modhello (module)
   /world/    -&gt; world
   /user/     -&gt; user
 /          -&gt; main (module)
   /          -&gt; root
   /login/    -&gt; login
   /u/&lt;name&gt;/ -&gt; userinfo
-</code></pre>
-
+</pre>
 <p>Suppose the user has requested <code>/hello/user/</code>, meaning the current route&rsquo;s path
 is <code>modhello.user</code> and the currently used module is <code>modhello</code>. Here&rsquo;s what
 different calls to <code>url_for</code> would return:</p>
-
-<pre><code class="language-dg">url_for &#39;.world&#39;                     -&gt; &#39;/hello/world/&#39;
-url_for &#39;..modhello.user&#39;            -&gt; &#39;/hello/user/&#39;
-url_for &#39;..main.root&#39;                -&gt; &#39;/&#39;
-url_for &#39;main.login&#39;                 -&gt; &#39;/login/&#39;
-url_for &#39;main.userinfo&#39; name: &#39;spam&#39; -&gt; &#39;/u/spam/&#39;
-</code></pre>
+<div class="highlight"><pre><span class="n">url_for</span> <span class="s">&#39;.world&#39;</span>                     <span class="o">-&gt;</span> <span class="s">&#39;/hello/world/&#39;</span>
+<span class="n">url_for</span> <span class="s">&#39;..modhello.user&#39;</span>            <span class="o">-&gt;</span> <span class="s">&#39;/hello/user/&#39;</span>
+<span class="n">url_for</span> <span class="s">&#39;..main.root&#39;</span>                <span class="o">-&gt;</span> <span class="s">&#39;/&#39;</span>
+<span class="n">url_for</span> <span class="s">&#39;main.login&#39;</span>                 <span class="o">-&gt;</span> <span class="s">&#39;/login/&#39;</span>
+<span class="n">url_for</span> <span class="s">&#39;main.userinfo&#39;</span> <span class="n">name</span><span class="o">:</span> <span class="s">&#39;spam&#39;</span> <span class="o">-&gt;</span> <span class="s">&#39;/u/spam/&#39;</span>
+</pre></div>
 
   </div>
 </div>

@@ -78,7 +78,7 @@
 
   For example, given this route structure:
 
-  ```
+  ```plain
   /hello/    -> modhello (module)
     /world/    -> world
     /user/     -> user

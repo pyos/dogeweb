@@ -1,8 +1,11 @@
 import '/dg'
 import '/re'
 import '/glob'
-import '/hoep'
 import '/xml/sax/saxutils/escape'
+
+import '/hoep'
+import '/pygments/lexers'     qualified
+import '/pygments/formatters' qualified
 
 
 INDENTRE = re.compile '^ *'
@@ -137,10 +140,18 @@ funcdecl = line ->
   name, ' '.join args
 
 
+Md = subclass hoep.Hoep where block_code = code lang ~> except
+  e => pygments.highlight code
+    pygments.lexers.get_lexer_by_name lang
+    pygments.formatters.HtmlFormatter!
+  e :: Exception => '<pre>{}</pre>'.format $ escape code
+
+
 markdown = level data ->
-  hoep.render data
+  h = Md
     hoep.EXT_FENCED_CODE | hoep.EXT_NO_INTRA_EMPHASIS
     hoep.HTML_SMARTYPANTS | hoep.HTML_ESCAPE
+  h.render data
 
 
 makepage = name level data -> data =>

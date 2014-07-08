@@ -59,6 +59,8 @@
   `writer` is an [asyncio.StreamWriter](https://docs.python.org/3/library/asyncio-stream.html#streamwriter) the response was
   sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.)
 
+  This method is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
+
 
 :class: FileResponse code path headers (Optional bufsize)
   A response that sends data from a local file instead of a string.

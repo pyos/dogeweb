@@ -64,7 +64,7 @@ with an appropriate <code>Content-Type</code> set.</p>
   <div class="container section section-class">
     <h2><span class='decl-name' id='Abort'>Abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>description</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>
     <p>An exception that signals HTTP errors. <code>description</code> must be a string;
-<code>headers</code> — something that can be converted into a dict.</p>
+<code>headers</code> has to be something that can be converted into a dict.</p>
 
   </div>
 </div>
@@ -97,8 +97,8 @@ with an appropriate <code>Content-Type</code> set.</p>
 <div class="section-wrapper section-wrapper-class" id="Response">
   <div class="container section section-class">
     <h2><span class='decl-name' id='Response'>Response</span> <span class='decl-arg'>code</span> <span class='decl-arg'>headers</span> <span class='decl-arg'>data</span></h2>
-    <p>A single-chunk response. <code>bytes</code> must be a <code>bytes</code>, <code>headers</code> — something that
-can be converted into a dict.</p>
+    <p>A single-chunk response. <code>data</code> must be a <code>bytes</code> object, <code>headers</code> should be
+convertable into a dict.</p>
 
   </div>
 </div>

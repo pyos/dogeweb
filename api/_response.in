@@ -23,7 +23,7 @@
 
 :class: Abort code (Optional description) (Optional headers)
   An exception that signals HTTP errors. `description` must be a string;
-  `headers` — something that can be converted into a dict.
+  `headers` has to be something that can be converted into a dict.
 
 :attribute: code
 :attribute: description
@@ -35,8 +35,8 @@
 
 
 :class: Response code headers data
-  A single-chunk response. `bytes` must be a `bytes`, `headers` — something that
-  can be converted into a dict.
+  A single-chunk response. `data` must be a `bytes` object, `headers` should be
+  convertable into a dict.
 
 :attribute: code
 :attribute: description

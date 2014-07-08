@@ -147,8 +147,8 @@ been parsed.</p>
   <div class="container section section-function">
     <h2><span class='decl-name' id='io_response'>io_response</span> <span class='decl-arg'>writer</span> <span class='decl-arg'>version</span> <span class='decl-arg'>code</span> <span class='decl-arg'>headers</span> <span class='decl-arg'>body</span></h2>
     <p>Given a <a href="https://docs.python.org/3/library/asyncio-stream.html#streamwriter">asyncio.StreamWriter</a> connected to a transport,
-send an HTTP response. <code>version</code> must be a <code>(major, minor)</code> tuple; <code>headers</code> —
-a <a href="../struct/#Headers">struct.Headers</a> object; <code>body</code> — an iterable of <code>bytes</code>.</p>
+send an HTTP response. <code>version</code> must be a <code>(major, minor)</code> tuple; <code>headers</code> has to be
+a <a href="../struct/#Headers">struct.Headers</a> object; <code>body</code> should be an iterable of <code>bytes</code>.</p>
 
 <p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
 

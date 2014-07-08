@@ -39,7 +39,7 @@
   Respond to a ping.
 
 :method: text payload
-  Send some text. Note that `data` must still be a `bytes` object.
+  Send some text. Note that `payload` must still be a `bytes` object.
 
 :method: data payload
   Send some binary data.

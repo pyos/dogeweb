@@ -76,7 +76,7 @@
   In all of the functions outlined below,
   a *handler* is a function that accepts a request as an argument and returns
   a response (or something else supported by [response.responsify]((local)).)
-  Optionally, it may also accept some keyword arguments which correspond to wildcards
+  Optionally, it may also accept some keyword arguments that correspond to wildcards
   in paths; for example, if you have a route for `/u/<name>`, its handler must
   accept a keyword argument `name`.
 
@@ -89,7 +89,7 @@
 
 :function: accept *: routes
   Route on HTTP `Accept` header. Routes must be `(mime, handler)` tuples; the handler
-  which corresponds to a MIME type with highest quality is chosen. See
+  that corresponds to a MIME type with highest quality is chosen. See
   [request.Request.accept]((local)).
 
 
@@ -146,7 +146,7 @@
   h = dogeweb.route.File()
   ````
 
-  Second, add some handlers though the `route` decorator:
+  Second, add some handlers through the `route` decorator:
 
   ```python
   @h.route('/')

@@ -157,7 +157,7 @@ _dispatch_multiple = fn choices options ->
              otherwise     => tuple xs + (_methodcheck h,)
         otherwise => _methodcheck h
       funcs.append $ getattr h 'fget' h
-  fn *: choices **: options
+  functools.update_wrapper updated: () (fn *: choices **: options) $ next (iter funcs) fn
 
 
 #: Make the function check whether the method is GET or there was a `method` router

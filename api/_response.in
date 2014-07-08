@@ -82,7 +82,7 @@
   Raise [Abort](#Abort). Accepts the same arguments.
 
 
-:function: redirect path (Optional info) (Optional code)
+:function: redirect path (Optional info) (Optional code) (Optional headers)
   Issue a redirect to another path by raising `Abort` with a `Location` header.
   By default, `code` is 302 (Found).
 

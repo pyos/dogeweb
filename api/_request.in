@@ -40,7 +40,7 @@
     * `accept.language` -- `Accept-Language`
     * `accept.encoding` -- `Accept-Encoding`
 
-  All of these are represented by [struct.Accept](../struct/#Accept) dict-like objects.
+  All of these are represented by [struct.Accept](../struct/#Accept) objects.
   MIME types, charsets, or whatever not specified in the request will have a quality
   of 0.
 

@@ -67,14 +67,14 @@
   The IP address of the client as a string.
 
 :attribute: fullpath
-  The requested path relative to `/`. (Unlike `path`, which is relative to the module.)
+  The requested path. This one is absolute, unlike `path`, which is relative to the module.
 
 :attribute: parent
   The difference between `fullpath` and `path.
 
 :method: url_for __name **: args
   Given the name of a route (in a syntax similar to Python relative imports)
-  and some arguments, construct an URL that points to that route.
+  and some keyword arguments, construct an URL that points to that route.
 
   For example, given this route structure:
 

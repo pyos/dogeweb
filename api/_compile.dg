@@ -14,7 +14,7 @@ HEADERRE = re.compile '^:(\w+): *(.*)$'
 DECLNAME = '''<span class='decl-name' id='{0}'>{0}</span>'''
 DECLARG  = '''<span class='decl-arg'>{}</span>'''
 DECLARGV = '''<span class='decl-arg decl-arg-var'>{}</span>'''
-DECLARGK = '''<span class='decl-arg decl-arg-vkv'>{}</span>'''
+DECLARGK = '''<span class='decl-arg decl-arg-vkw'>{}</span>'''
 DECLOPT  = '''<span class='decl-arg decl-arg-opt'>{}</span>'''
 
 SECTION = '''<div class="section-wrapper section-wrapper-{0}" id="{1[0]}">

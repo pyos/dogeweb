@@ -144,7 +144,7 @@
 
   ```python
   h = dogeweb.route.File()
-  ````
+  ```
 
   Second, add some handlers through the `route` decorator:
 

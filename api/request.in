@@ -1,0 +1,122 @@
+:description: a neater representation of HTTP requests.
+
+
+:class: Request
+  A single HTTP request. Instances of this class are created by
+  [main.Server]((local)) automatically; you don't need to do that yourself.
+
+:attribute: version
+  The HTTP version the client used as a `(major, minor)` tuple.
+
+:attribute: method
+  The HTTP method used by the client, e.g. `GET` or `POST`.
+
+:attribute: path
+  The path requested by the client. Relative to the current routine module
+  (see [route.dir]((local)).)
+
+:attribute: headers
+  Additional HTTP headers as a [struct.Headers]((local)).
+
+:attribute: payload
+  The request body as a `bytes` object.
+
+:attribute: handler
+  The top-level handler this request was passed to (the one you created an instance of
+  [main.Server]((local)) with.)
+
+:attribute: loop
+  The [asyncio event loop](https://docs.python.org/3/library/asyncio-eventloop.html)
+  everything is running in.
+
+:attribute: log
+  A [logging.Logger]((stdlib,logging)) named `dogeweb`.
+
+:attribute: accept
+  Parsed values of various `Accept` headers.
+
+    * `accept.mime` -- `Accept`
+    * `accept.charset` -- `Accept-Charset`
+    * `accept.language` -- `Accept-Language`
+    * `accept.encoding` -- `Accept-Encoding`
+
+  All of these are represented by [struct.Accept]((local)) dict-like objects.
+  MIME types, charsets, or whatever not specified in the request will have a quality
+  of 0.
+
+:attribute: cookies
+  All cookies from this request as a dict.
+
+:attribute: args
+  Form fields passed through the URL (the part after `?`) as a [struct.MultiDict]((local)).
+
+:attribute: form
+  Form fields passed through the request body. This includes files, too.
+
+:attribute: files
+  Same as `form`, but only top-level files are included. Removes the need for some
+  type-checking.
+
+:attribute: isxhr
+  Whether this request was made through `XmlHttpRequest` (aka AJAX).
+
+:attribute: isjson
+  Whether the client expects JSON instead of HTML. Useful for building APIs.
+
+:attribute: address
+  The IP address of the client as a string.
+
+:note:
+  The following methods do not use any info from the request; they're shortcuts.
+
+:method: abort
+  Same as [response.abort]((local)).
+
+:method: redirect
+  Same as [response.redirect]((local)).
+
+:method: static
+  Same as [response.static]((local)).
+
+:method: jsonify
+  Same as [response.jsonify]((local)).
+
+:attribute: fullpath
+  The requested path relative to `/`. (Unlike `path`, which is relative to the module.)
+
+:attribute: parent
+  The difference between `fullpath` and `path.
+
+:method: url_for __name **: args
+  Given the name of a route (in a syntax similar to Python relative imports)
+  and some arguments, construct an URL that points to that route.
+
+  For example, given this route structure:
+
+  ```
+  /hello/    -> modhello (module)
+    /world/    -> world
+    /user/     -> user
+  /          -> main (module)
+    /          -> root
+    /login/    -> login
+    /u/<name>/ -> userinfo
+  ```
+
+  Suppose the user has requested `/hello/user/`, meaning the current route's path
+  is `modhello.user` and the currently used module is `modhello`. Here's what
+  different calls to `url_for` would return:
+
+  ```dg
+  url_for '.world'                     -> '/hello/world/'
+  url_for '..modhello.user'            -> '/hello/user/'
+  url_for '..main.root'                -> '/'
+  url_for 'main.login'                 -> '/login/'
+  url_for 'main.userinfo' name: 'spam' -> '/u/spam/'
+  ```
+
+:method: websocket handler
+  Initiate a websocket handshake. May abort the request with 400; if not, returns a
+  [response.Response]((local)) with appropriate headers. After these are sent,
+  `handler` will be called with a reader and a writer. See [websocket.Reader]((local))
+  and [websocket.Writer]((local)) for details.

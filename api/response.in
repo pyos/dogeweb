@@ -1,0 +1,96 @@
+:description: An HTTP response wrapper
+
+
+:function: responsify smth
+  Convert some object into a [Response]((this)). Supported objects are:
+  
+    * [Response]((this)) objects (returned as-is);
+    * strings (assumed to be utf-8 HTML);
+    * bytestrings (assumed to be HTML with a `<meta>` tag specifying the encoding);
+    * `(code, *headers, something_else)` tuples where `something_else` is
+      one of the other supported objects and `headers` is an arbitrary amount
+      of `(name, value)` tuples;
+    * [coroutines](https://docs.python.org/3/library/asyncio-task.html#coroutine)
+      that return any of the above.
+
+  This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
+
+
+:function: jsonify smth
+  Encode a JSON object with `json.dumps`, return a [Response]((this))
+  with an appropriate `Content-Type` set.
+
+
+:class: Abort code (Optional description) (Optional headers)
+  An exception that signals HTTP errors. `description` must be a string;
+  `headers` — something that can be converted into a dict.
+
+:attribute: code
+:attribute: description
+:attribute: headers
+  Now as a [struct.Headers]((local)).
+
+:attribute: name
+  What this error code means according to the HTTP standard.
+
+
+:class: Response code headers data
+  A single-chunk response. `bytes` must be a `bytes`, `headers` — something that
+  can be converted into a dict.
+
+:attribute: code
+:attribute: description
+:attribute: data
+  A list of chunks.
+
+:attribute: headers
+  Now as a [struct.Headers]((local)).
+
+:attribute: defheaders
+  A property that returns some headers. These will be sent to the client
+  unless overriden in the constructor. By default, these are:
+
+    * `Content-Type: text/html; charset=utf-8`
+    * `Content-Length`: whatever the length of `data` is.
+
+:method: communicate reader writer
+  Called after the response is sent to the client. `reader` is an
+  [asyncio.StreamReader]((stdlib,asyncio-streams)) the request was received from,
+  `writer` is an [asyncio.StreamWriter]((stdlib,asyncio-streams)) the response was
+  sent through. Useful for upgrading to other protocols (e.g. HTTP 2 or WebSocket.)
+
+
+:class: FileResponse code path headers (Optional bufsize)
+  A response that sends data from a local file instead of a string.
+  Inherits [Response]((this)). If the file does not exist or is not readable,
+  constructor throws HTTP 404.
+
+:attribute: path
+:attribute: bufsize
+:attribute: defheaders
+  Same as [Response.defheaders]((this)), except `Content-Length` is determined
+  via [os.stat]((stdlib,os)).
+
+:attribute: data
+  A property that returns an iterator of chunks, the closes the file
+  after yielding the last one.
+
+
+:function: abort code (Optional info) (Optional headers)
+  Raise [Abort]((this)). Accepts the same arguments.
+
+
+:function: redirect path (Optional info) (Optional code)
+  Issue a redirect to another path by raising `Abort` with a `Location` header.
+  By default, `code` is 302 (Found).
+
+
+:function: static path (Optional attachment) (Optional headers)
+  Guess the MIME type from the file name, create a [FileResponse]((this)).
+  If `attachment` is true, `Content-Disposition` is set to `attachment`
+  (meaning browsers will download the file instead of attempting to display it.)
+
+  **NOTE**: this function will happily send *any* file; normalize the filename first
+  if you've received it from an unknown source! For example, a client can easily
+  request `/static/../../../../../../../etc/passwd`; to avoid this,
+  call [os.path.normpath]((stdlib,os.path)) before [os.path.join]((stdlib,os.path)).

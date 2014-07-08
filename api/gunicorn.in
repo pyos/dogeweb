@@ -1,0 +1,11 @@
+:description: [gunicorn](http://gunicorn.org/) compatibility
+
+
+:class: Worker
+  The only thing provided by this module. See
+  [gunicorn configuration overview](http://docs.gunicorn.org/en/develop/configure.html#worker-class)
+  for details.
+  
+  ```bash
+  gunicorn -k dogeweb.gunicorn.Worker module:app
+  ```

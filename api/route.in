@@ -1,0 +1,167 @@
+:description: The routing subsystem
+
+
+:note:
+  This module is also available under the name `r`.
+
+
+:global: WILDCARDRE
+  A precompiled regular expression that matches wildcards in routes. By default,
+  the syntax is `<type:name>` or `<name>` (short for `<str:name>`.)
+
+
+:global: wildcards
+  A dict that maps types to `(regex, parser)` tuples. `regex` must be a valid
+  non-compiled (i.e. a string) regular expression that matches whatever `parser`
+  accepts; `parser` must be a function that accepts the matched substring and
+  returns some object that will be passed on to the handler.
+
+  By default, the following types are supported:
+
+    * str (any sequence of characters excluding `/`);
+    * path (any sequence of characters, period);
+    * int (a positive integer).
+
+  If the type is not specified, `None` is used. By default, that's the same
+  as specifying `str`.
+
+
+:function: pathregex path
+  Given a path route with wildcards, create a regex according to [wildcards]((this)).
+  Returns a `(regex, parsers)` tuple where `parsers` is a dict mapping group names
+  to parser functions from `wildcards`.
+
+
+:function: concrete args path
+  Sort of a reverse of [pathregex]((this)); given a dict that maps group names
+  to values and a path route with wildcards, construct a complete path.
+  For example, calling this with `{'name': 'spam'}` and `"/u/<name>/"`
+  would result in `"/u/spam/"`.
+
+
+:function: router fn
+  A decorator (or a higher-level function) that wraps a router.
+  A router is a function that accepts either
+
+    * a fixed number of arguments, the last of which is a routing target;
+    * a variable number of arguments, all of which are routing targets;
+
+  where a routing target is either a function or a tuple in which the last item
+  is a function.
+
+  Unlike a normal function, a router
+
+    * can accept properties instead of functions; those are converted into
+      one-argument functions automatically. For example:
+
+      ```dg
+      f = g -> request -> g request
+      f $ ~> 'Hello, World!'
+      ```
+
+      would not work (a property is not callable), but
+
+      ```dg
+      f = router $ g -> request -> g request
+      f $ ~> 'Hello, World!'
+      ```
+
+      would;
+
+    * can handle requests with methods other than `GET` and `HEAD` even if outside
+      a [method]((this)) router (normal functions would raise HTTP 405).
+
+
+:note:
+  In all of the functions outlined below,
+  a *handler* is a function that accepts a request as an argument and returns
+  a response (or something else supported by [response.responsify]((local)).)
+  Optionally, it may also accept some keyword arguments which correspond to wildcards
+  in paths; for example, if you have a route for `/u/<name>`, its handler must
+  accept a keyword argument `name`.
+
+
+:function: upgrade *: routes
+  Route on HTTP `Upgrade` header. Routes must be `(protocol, handler)` tuples.
+  If the client does not wish to switch protocols (i.e. did not specify an `Upgrade`
+  header), `http` is used.
+
+
+:function: accept *: routes
+  Route on HTTP `Accept` header. Routes must be `(mime, handler)` tuples; the handler
+  which corresponds to a MIME type with highest quality is chosen. See
+  [request.Request.accept]((local)).
+
+
+:function: method *: routes
+  Route on HTTP method. Routes must be `(method, handler)` tuples. If this router is
+  not used, HTTP 405 is raised for methods other than `GET` and `HEAD`.
+
+
+:function: file *: routes
+  Route on the requested path. Routes must be `(path, handler)` or `(path, name, handler)`
+  tuples. The `name` item is used for constructing URLs; see [request.Request.url_for]((local)).
+  `path` may contain wildcards; see [WILDCARDRE]((this)), [wildcards]((this)), and
+  [pathregex]((this)). If a route ends with a slash but the requested path does not
+  (but otherwise matches the regex), the client is redirected to a path that contains
+  the slash. (For example, given a route for `/smth/`, a redirect from `/smth` to
+  `/smth/` is created automatically.)
+
+
+:function: dir *: routes
+  Route between modules. The arguments are the same as for [file]((this)), except the paths
+  must end with slashes. Unlike `file`, routes do not have to match the whole path,
+  only the beginning of it. Note that [file]((this)) routes relative to the current module;
+  for example, if you have a module `/users/` and you wish to match `/users/login`,
+  this is the structure you want:
+
+  ```dg
+  handler = r.dir
+    '/users/', r.file
+      '/login', ...
+  ```
+
+
+:function: host *: routes
+  Route on HTTP `Host` header. Routes must be `(host, handler)` tuples; the first
+  handler that corresponds to a non-strict superdomain is used. (For example,
+  `spam.com` would match both `spam.com` and `eggs.spam.com`, but not `eggs.org`
+  or `spam.com:8080`.)
+
+
+:note:
+  If anonymous functions are not your style, all of the above routers are
+  available as decorators.
+
+    * `Upgrade` → `upgrade`
+    * `Accept` → `accept`
+    * `Method` → `method`
+    * `File` → `file`
+    * `Dir` → `dir`
+    * `Host` → `host`
+
+  First, create an instance of the router of your choice:
+
+  ```python
+  h = dogeweb.route.File()
+  ````
+
+  Second, add some handlers though the `route` decorator:
+
+  ```python
+  @h.route('/')
+  def hello(request):
+      return 'Hello, World!'
+  ```
+
+  Optionally, `add_route` can be used if the function already exists:
+
+  ```python
+  h.add_route('/hello/', 'hello_copy', hello)
+  ```
+
+  Third, use the `handler` attribute to convert this object into a function:
+
+  ```python
+  app = dogeweb.app(h.handler)
+  ```

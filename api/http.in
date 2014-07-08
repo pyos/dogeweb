@@ -1,0 +1,88 @@
+:description: HTTP/1.1 parsers.
+
+
+:function: status line
+  Parse the first line of a request, return a `(method, path, version)` tuple
+  where `version` is a `(major, minor)` tuple. `major` is always 1.
+
+
+:function: headers lines
+  Given a list (not an iterator!) of `bytes`, parse them as HTTP headers. Returns
+  an iterator of `(name, value)` pairs where both `name` and `value` are strings.
+
+
+:function: accept data
+  Parse the value of an `Accept`-like header. Returns an iterator of
+  `(something, quality)` pairs; `quality` is a floating-point number from 0 to 1
+  inclusive.
+
+
+:function: cookies xs (Optional encoding)
+  Parse multiple `Cookie` headers (`xs` is a list of strings.) Returns an iterator
+  of `(name, value)` pairs.
+
+
+:function: body data headers
+  Parse a request body. *This function does not decompress gzip, nor does it
+  handle chunked transfer-encoding.* `headers` must be a [struct.Headers]((local)).
+
+  Supported MIME types:
+
+    * `application/x-www-form-urlencoded`
+    * `multipart/form-data`
+    * `application/json`
+
+  Note that some of these do not support data types available in others; for example,
+  only `multipart/form-data` supports files, and only `application/json` can
+  transfer arrays. In JSON, objects are converted into [struct.MultiDict]((local))s.
+
+  Returns an iterable of `(name, value)` pairs.
+
+
+:function: jsonform xs
+  Parse a JSON request body, converting objects into MultiDicts. The top-level
+  entity must always be an object. Returns an iterable of `(name, value)` pairs.
+
+
+:function: query xs (Optional encoding) (Optional sep) (Optional space)
+  Parse an urlencoded string. `encoding` defaults to `utf-8`. `sep` and `space`
+  specify separators to use; by default, these are `&` and `+`. Returns an iterable
+  of `(name, value)` pairs.
+
+
+:function: multipart data boundary (Optional encoding)
+  Parse a `multipart/form-data` request body. `data` must be `bytes`.
+  `boundary` is an attribute extracted from `Content-Type`. `encoding` defaults to
+  `utf-8`. Nested form data is parsed, too. Files are returned as [struct.File]((local))
+  objects. Returns an iterable of `(name, value)` pairs.
+
+
+:function: io_request reader
+  Given a [asyncio.StreamReader]((stdlib,asyncio-streams)) connected to a transport,
+  attempt to read a single HTTP request from it. If the request is incomplete,
+  raises [asyncio.IncompleteReadError]((stdlib,asyncio-streams)). If the request could not
+  be parsed (for example, it's an HTTP/0.9 request), raises `ValueError`.
+
+  Returns a `(method, path, version, headers, payload)` tuple, where `headers`
+  is a [struct.Headers]((local)) and `payload` is an already decompressed and de-chunked
+  `bytes` object.
+
+  This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
+
+
+:function: io_payload_chunked reader
+  Given a [asyncio.StreamReader]((stdlib,asyncio-streams)) connected to a transport,
+  read data with `chunked` transfer-encoding. The headers preceding it must have already
+  been parsed.
+
+  Returns a `bytes` object; note that the data may have been compressed.
+
+  This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
+
+
+:function: io_response writer version code headers body
+  Given a [asyncio.StreamWriter]((stdlib,asyncio-streams)) connected to a transport,
+  send an HTTP response. `version` must be a `(major, minor)` tuple; `headers` —
+  a [struct.Headers]((local)) object; `body` — an iterable of `bytes`.
+
+  This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).

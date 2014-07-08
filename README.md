@@ -11,21 +11,39 @@ import '/dogeweb/r'
 
 app = dogeweb.app $ r.file
   '/', ~> 'Hello, World!'
-
-if __name__ == "__main__" => app.run '0.0.0.0' 8000
-```
-
-```sh
-python3 -m dg helloworld.dg
-# Or, if you want more RPS:
-gunicorn -k dogeweb.gunicorn.Worker helloworld:app
 ```
 
 See [this example](https://github.com/pyos/dogeweb/blob/master/examples/simple.dg)
 for something slightly more complex.
 
 
-#### Python interop
+### Usage, decorator-style
 
-While not exactly recommeded, it's obviously possible.
-[Here's that example rewritten in Python](https://github.com/pyos/dogeweb/blob/master/examples/simple.py).
+```python
+import dg
+import dogeweb
+
+root = dogeweb.r.File()
+
+@root.route('/')
+def hello(request):
+    return 'Hello, World!'
+
+app = dogeweb.app(root.handler)
+```
+
+### Running in development
+
+```dg
+app.run '0.0.0.0' 8000  # dg
+```
+
+```python
+app.run('0.0.0.0', 8000)  # python
+```
+
+### Running in production
+
+```sh
+gunicorn -k dogeweb.gunicorn.Worker helloworld:app
+```

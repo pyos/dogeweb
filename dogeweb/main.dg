@@ -2,7 +2,6 @@ import '/socket'
 import '/logging'
 
 import '/asyncio'
-import '/asyncio/TimeoutError'
 import '/asyncio/CancelledError'
 import '/asyncio/IncompleteReadError'
 
@@ -48,7 +47,6 @@ Server = subclass object where
           except
             e2 => yield from $ util.timelimit @timeout loop: loop $ http.io_request reader
             e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
-            e2 :: TimeoutError        => raise CancelledError
             e2 :: IncompleteReadError => raise CancelledError
 
         resp = except

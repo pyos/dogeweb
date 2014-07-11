@@ -2,18 +2,14 @@ import '/os'
 import '/asyncio'
 import '/gunicorn/workers/base'
 
-import 'util'
-
 
 Worker = subclass base.Worker where run = self ->
   loop = asyncio.new_event_loop!
   asyncio.get_event_loop!.close!
   asyncio.set_event_loop loop
-  loop.run_until_complete $
-    where
-      srv = yield from $ util.start_server sock: @sockets loop: loop $ @wsgi loop
-      except
-        _ => while @alive and @ppid == os.getppid! =>
-          @notify!
-          yield from $ asyncio.sleep 1 loop: loop
-        finally => srv.close!
+  loop.call_soon $
+    _notify = ->
+      @notify!
+      not @alive or @ppid != os.getppid! => loop.stop!
+      loop.call_later 1 _notify
+  @wsgi.run sock: @sockets loop: loop

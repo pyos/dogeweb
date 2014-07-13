@@ -106,72 +106,15 @@ pathrouter = f no_bare: False -> *: xs ->
   router
 
 
-#: Given a function that accepts either
-#:   a. some arguments and a handler function; or
-#:   b. a variable amount of arguments, each of them a handler or a tuple that ends with one
-#: and returns a handler, do the following stuff:
-#:   a. allow these handlers to be properties, not functions;
-#:   b. mark the returned function as a router that accepts any method;
-#:   c. make the endpoints raise HTTP 405 on non-HEAD/GET requests.
+#: Copy metadata (such as the name and the docstring) from one function to another.
 #:
-#: router :: T:(Either (... Handler -> Handler) (*(*object, Handler) -> Handler)) -> T
+#: wraps :: (a -> b) (c -> d) -> (c -> d)
 #:
-router = fn ->
-  __ARG_POSITIONAL = inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD
-  # First, determine which kind of a router we're dealing with. The assumption is that
-  # `varargs` is always a list of tuples, and functions without varargs accept a single router,
-  # which should be the last argument w/o a default value.
-  params = list (inspect.signature fn).parameters.values!
-  varary = any  $ map (x -> x.kind == x.VAR_POSITIONAL) params
-  # Second, find the last positional argument without a default value.
-  iparams = enumerate (reversed params) 1
-  posargs = filter ((_, x) -> x.kind in __ARG_POSITIONAL and x.default is x.empty) iparams
-  i = not varary => except
-    err => len params - fst (next posargs)
-    err :: StopIteration => raise $ AssertionError 'cannot locate a non-default positional arg'
-
-  *: choices **: options ->
-    g = if varary    => _dispatch_multiple fn (list choices) options
-           otherwise => _dispatch_single   fn (list choices) options i
-    g.router = True
-    g
-
-
-_dispatch_single = fn choices options i ->
-  h = choices !! i
-  h = choices !! i = if
-    h :: property => _methodcheck h.fget
-    otherwise     => _methodcheck h
-  functools.update_wrapper (fn *: choices **: options) h
-
-
-_dispatch_multiple = fn choices options ->
-  funcs   = list!
-  choices = list
-    where for h in choices =>
-      yield $ if
-        h :: property => _methodcheck h.fget
-        h :: tuple    =>
-          *xs, h = h
-          if h :: property => tuple xs + (_methodcheck h.fget,)
-             otherwise     => tuple xs + (_methodcheck h,)
-        otherwise => _methodcheck h
-      funcs.append $ getattr h 'fget' h
-  functools.update_wrapper updated: () (fn *: choices **: options) $ next (iter funcs) fn
-
-
-#: Make the function check whether the method is GET or there was a `method` router
-#: somewhere along the path. Raise HTTP 405 otherwise.
-#:
-#: _methodcheck :: (Request * ** -> a) -> Request * ** -> a
-#:
-_methodcheck = fn -> if
-  hasattr fn 'router' => fn  # Only endpoints need to check that.
-  otherwise => functools.update_wrapper wrapped: fn $ *: a **: k ~> if
-    @_nomethodcheck   => fn self *: a **: k
-    @method == 'GET'  => fn self *: a **: k
-    @method == 'HEAD' => fn self *: a **: k
-    otherwise         => @abort 405
+wraps = f g ->
+  x = f.__dict__.copy!
+  x.update g.__dict__
+  g.__dict__.update x
+  functools.update_wrapper g f updated: ()
 
 
 #: Check whether a requested `Host` is a subdomain of another.
@@ -205,7 +148,7 @@ _issameas = path (fns, regex) -> (m = regex.match path) and m.end! == len path =
 #:
 #: upgrade :: Router str
 #:
-upgrade = router $ *: choices -> req **: k -> next $
+upgrade = *: choices -> req **: k -> next $
   where
     up = req.headers.get 'Upgrade' 'http'
     for (protocol, fn) in choices => if protocol == up =>
@@ -217,7 +160,7 @@ upgrade = router $ *: choices -> req **: k -> next $
 #:
 #: accept :: Router str
 #:
-accept = router $ *: choices -> req **: k ->
+accept = *: choices -> req **: k ->
   fn = max choices key: ((x, _) -> req.accept.mime !! x) !! 1
   fn req **: k
 
@@ -227,13 +170,21 @@ accept = router $ *: choices -> req **: k ->
 #:
 #: method :: Router str
 #:
-method = router $ *: choices -> req **: k -> next $
+method = *: choices -> req **: k -> next $
   where
-    req._nomethodcheck = True
     for (method, fn) in choices =>
       if method == req.method or (req.method == 'HEAD' and method == 'GET') =>
         yield $ fn req **: k
     req.abort 405
+
+
+#: Reject non-GET/HEAD requests.
+#:
+#: get :: (a -> b) -> (a -> b)
+#:
+get = f -> wraps f $ req **: k -> if
+  req.method in ('HEAD', 'GET') => f req **: k
+  otherwise => req.abort 405
 
 
 #: Route on HTTP path. If a request was made to `/something` and a route was found
@@ -241,7 +192,7 @@ method = router $ *: choices -> req **: k -> next $
 #:
 #: file :: Router str
 #:
-file = router $ pathrouter $ *: choices routerev -> req **: k -> next $
+file = pathrouter $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issameas` path) =>
@@ -263,7 +214,7 @@ file = router $ pathrouter $ *: choices routerev -> req **: k -> next $
 #:
 #: dir :: Router str
 #:
-dir = router $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
+dir = pathrouter no_bare: True $ *: choices routerev -> req **: k -> next $
   where
     for (path, fn) in choices =>
       if (match = req.path `_issubpathof` path) =>
@@ -281,7 +232,7 @@ dir = router $ pathrouter no_bare: True $ *: choices routerev -> req **: k -> ne
 #:
 #: host :: Router str
 #:
-host = router $ *: choices -> req **: k -> next $
+host = *: choices -> req **: k -> next $
   where
     this = req.headers.get 'Host' ''
     for (host, fn) in choices => if this `_issubdomainof` host =>
@@ -350,8 +301,6 @@ ContextAware = subclass object where
     @modpath  = list' ''
     @modroute = list' @handler
     @modname  = list' '<root>'
-    # If this is set to `True`, `_methodcheck` does nothing.
-    @_nomethodcheck = False
     None
 
   #: The requested path relative to `/`, not the current module.

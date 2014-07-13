@@ -39,6 +39,8 @@ Request = subclass route.ContextAware websocket.ContextAware where
   #:
   __init__ = @handler @loop @reader @writer @log @method path @version @headers @payload ~>
     @path, _, @query = path.partition '?'
+    @ishead = @method == 'HEAD'
+    @ishead => @method = 'GET'
     (super Request self).__init__!
 
   #: Values of various `Accept-*` HTTP headers as dict-like objects.

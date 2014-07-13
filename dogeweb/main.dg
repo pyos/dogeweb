@@ -63,7 +63,9 @@ Server = subclass object where
               inner :: Exception      => req.abort 500
             middle :: Abort => yield from $ response.responsify $ @error req middle
 
-        yield from $ http.io_response writer req.version resp.code resp.headers resp.data
+        data = if req.ishead => ()
+                  otherwise  => resp.data
+        yield from $ http.io_response writer req.version resp.code resp.headers data
         yield from $ resp.communicate reader writer
         close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
                 'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers

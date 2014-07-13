@@ -68,15 +68,6 @@ as specifying <code>str</code>.</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-function" id="pathregex">
-  <div class="container section section-function">
-    <h2><span class='decl-name' id='pathregex'>pathregex</span> <span class='decl-arg'>path</span></h2>
-    <p>Given a path route with wildcards, create a regex according to <a href="#wildcards">wildcards</a>.
-Returns a <code>(regex, parsers)</code> tuple where <code>parsers</code> is a dict mapping group names
-to parser functions from <code>wildcards</code>.</p>
-
-  </div>
-</div>
 <div class="section-wrapper section-wrapper-function" id="concrete">
   <div class="container section section-function">
     <h2><span class='decl-name' id='concrete'>concrete</span> <span class='decl-arg'>args</span> <span class='decl-arg'>path</span></h2>
@@ -87,42 +78,17 @@ would result in <code>&quot;/u/spam/&quot;</code>.</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-function" id="router">
+<div class="section-wrapper section-wrapper-function" id="wraps">
   <div class="container section section-function">
-    <h2><span class='decl-name' id='router'>router</span> <span class='decl-arg'>fn</span></h2>
-    <p>A decorator (or a higher-level function) that wraps a router.
-A router is a function that accepts either</p>
-
-<ul>
-<li>a fixed number of arguments, the last of which is a routing target;</li>
-<li>a variable number of arguments, all of which are routing targets;</li>
-</ul>
-
-<p>where a routing target is either a function or a tuple in which the last item
-is a function.</p>
-
-<p>Unlike a normal function, a router</p>
-
-<ul>
-<li><p>can accept properties instead of functions; those are converted into
-one-argument functions automatically. For example:</p>
-<div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="n">g</span> <span class="o">-&gt;</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="n">g</span> <span class="n">request</span>
-<span class="n">f</span> <span class="o">$</span> <span class="o">~&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
-</pre></div>
-
-<p>would not work (a property is not callable), but</p>
-<div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="n">router</span> <span class="o">$</span> <span class="n">g</span> <span class="o">-&gt;</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="n">g</span> <span class="n">request</span>
-<span class="n">f</span> <span class="o">$</span> <span class="o">~&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
-</pre></div>
-
-<p>would;</p></li>
-<li><p>can handle requests with methods other than <code>GET</code> and <code>HEAD</code> even if outside
-a <a href="#method">method</a> router (normal functions would raise HTTP 405).</p></li>
-</ul>
+    <h2><span class='decl-name' id='wraps'>wraps</span> <span class='decl-arg'>f</span> <span class='decl-arg'>g</span></h2>
+    <p>Basically same thing as <a href="https://docs.python.org/3.4/library/functools.html#functools.update_wrapper">functools.update_wrapper</a>
+(but with reversed order of arguments): this function copies metadata from function
+<code>f</code> to function <code>g</code>. The only difference is that it does not overwrite attributes
+already defined on <code>g</code>.</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-note" id="7">
+<div class="section-wrapper section-wrapper-note" id="6">
   <div class="container section section-note">
     <h2></h2>
     <p>In all of the functions outlined below,
@@ -132,20 +98,9 @@ Optionally, it may also accept some keyword arguments that correspond to wildcar
 in paths; for example, if you have a route for <code>/u/&lt;name&gt;</code>, its handler must
 accept a keyword argument <code>name</code>.</p>
 
-<p>If anonymous functions are not your style, all of these routers are
-available as decorators.</p>
-
-<ul>
-<li><code>Upgrade</code> → <code>upgrade</code></li>
-<li><code>Accept</code> → <code>accept</code></li>
-<li><code>Method</code> → <code>method</code></li>
-<li><code>File</code> → <code>file</code></li>
-<li><code>Dir</code> → <code>dir</code></li>
-<li><code>Host</code> → <code>host</code></li>
-</ul>
-
-<p>First, create an instance of the router of your choice:</p>
-<div class="highlight"><pre><span class="n">h</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">File</span><span class="p">()</span>
+<p>If anonymous functions are not your style, all these routers can be used as decorators,
+too. First, create an instance of the router of your choice:</p>
+<div class="highlight"><pre><span class="n">h</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">path</span><span class="p">()</span>
 </pre></div>
 
 <p>Second, add some handlers through the <code>route</code> decorator:</p>
@@ -154,19 +109,29 @@ available as decorators.</p>
     <span class="k">return</span> <span class="s">&#39;Hello, World!&#39;</span>
 </pre></div>
 
-<p>Optionally, <code>add_route</code> can be used if the function already exists:</p>
-<div class="highlight"><pre><span class="n">h</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s">&#39;/hello/&#39;</span><span class="p">,</span> <span class="s">&#39;hello_copy&#39;</span><span class="p">,</span> <span class="n">hello</span><span class="p">)</span>
+<p>Optionally, <code>add</code> can be used if the function already exists:</p>
+<div class="highlight"><pre><span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;/hello/&#39;</span><span class="p">,</span> <span class="s">&#39;hello_copy&#39;</span><span class="p">,</span> <span class="n">hello</span><span class="p">)</span>
 </pre></div>
 
-<p>Third, use the <code>handler</code> attribute to convert this object into a function:</p>
-<div class="highlight"><pre><span class="n">app</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+<p>Third, use the router as you would a function:</p>
+<div class="highlight"><pre><span class="n">app</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">h</span><span class="p">))</span>
 </pre></div>
 
 <p>The result is roughly equivalent to</p>
-<div class="highlight"><pre><span class="n">app</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">app</span> <span class="o">$</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">file</span>
-  <span class="s">&#39;/&#39;</span><span class="o">,</span>       <span class="s">&#39;hello&#39;</span><span class="o">,</span>      <span class="o">~&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
-  <span class="s">&#39;/hello/&#39;</span><span class="o">,</span> <span class="s">&#39;hello_copy&#39;</span><span class="o">,</span> <span class="o">~&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
+<div class="highlight"><pre><span class="n">app</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">app</span> <span class="o">$</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">get</span> <span class="o">$</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">path</span>
+  <span class="s">&#39;/&#39;</span><span class="o">,</span>       <span class="s">&#39;hello&#39;</span><span class="o">,</span>      <span class="n">request</span> <span class="o">-&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
+  <span class="s">&#39;/hello/&#39;</span><span class="o">,</span> <span class="s">&#39;hello_copy&#39;</span><span class="o">,</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
 </pre></div>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="host">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='host'>host</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <p>Route on HTTP <code>Host</code> header. Routes must be <code>(host, handler)</code> tuples; the first
+handler that corresponds to a non-strict superdomain is used. (For example,
+<code>spam.com</code> would match both <code>spam.com</code>, <code>spam.com:8080</code> and <code>eggs.spam.com</code>,
+but not <code>eggs.org</code>.)</p>
 
   </div>
 </div>
@@ -191,14 +156,49 @@ that corresponds to a MIME type with highest quality is chosen. See
 <div class="section-wrapper section-wrapper-function" id="method">
   <div class="container section section-function">
     <h2><span class='decl-name' id='method'>method</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
-    <p>Route on HTTP method. Routes must be <code>(method, handler)</code> tuples. If this router is
-not used, HTTP 405 is raised for methods other than <code>GET</code> and <code>HEAD</code>.</p>
+    <p>Route on HTTP method. Routes must be <code>(method, handler)</code> tuples.</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-function" id="file">
+<div class="section-wrapper section-wrapper-function" id="get">
   <div class="container section section-function">
-    <h2><span class='decl-name' id='file'>file</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
+    <h2><span class='decl-name' id='get'>get</span> <span class='decl-arg'>route</span></h2>
+    <p>Normally, all handlers are allowed to accept all methods, unless explicitly
+overriden via <a href="#method">method</a>. It is, however, common to create routes that
+only handle GET request. Use this as a decorator to make a handler respond with HTTP 405
+to other methods:</p>
+<div class="highlight"><pre><span class="c1"># dg</span>
+<span class="n">greet_on_get</span> <span class="o">=</span> <span class="n">dogeweb</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">get</span> <span class="o">$</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="s">&#39;Hello, World!&#39;</span>
+</pre></div>
+<div class="highlight"><pre><span class="c"># python</span>
+<span class="nd">@dogeweb.route.get</span>
+<span class="k">def</span> <span class="nf">greet_on_get</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&#39;Hello, World!&#39;</span>
+</pre></div>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-note" id="12">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>If you&rsquo;re using the decorator form of <a href="#get">get</a> with the decorator form of some
+other router, note that the order is important!</p>
+<div class="highlight"><pre><span class="c"># This would add a route that only handles GET requests:</span>
+<span class="nd">@smth.route</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+<span class="nd">@dogeweb.route.get</span>
+<span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="n">req</span><span class="p">):</span> <span class="o">...</span>
+
+<span class="c"># This is pure nonsense:</span>
+<span class="nd">@dogeweb.route.get</span>
+<span class="nd">@smth.route</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="n">req</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="path">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='path'>path</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
     <p>Route on the requested path. Routes must be <code>(path, handler)</code> or <code>(path, name, handler)</code>
 tuples. The <code>name</code> item is used for constructing URLs; see <a href="../request/#url_for">request.Request.url_for</a>.
 <code>path</code> may contain wildcards; see <a href="#WILDCARDRE">WILDCARDRE</a>, <a href="#wildcards">wildcards</a>, and
@@ -212,25 +212,15 @@ the slash. (For example, given a route for <code>/smth/</code>, a redirect from 
 <div class="section-wrapper section-wrapper-function" id="dir">
   <div class="container section section-function">
     <h2><span class='decl-name' id='dir'>dir</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
-    <p>Route between modules. The arguments are the same as for <a href="#file">file</a>, except the paths
-must end with slashes. Unlike <code>file</code>, routes do not have to match the whole path,
-only the beginning of it. Note that <a href="#file">file</a> routes relative to the current module;
+    <p>Route between modules. The arguments are the same as for <a href="#path">path</a>, except the paths
+must end with slashes. Unlike <code>path</code>, routes do not have to match the whole path,
+only the beginning of it. Note that <a href="#path">path</a> routes relative to the current module;
 for example, if you have a module <code>/users/</code> and you wish to match <code>/users/login</code>,
 this is the structure you want:</p>
 <div class="highlight"><pre><span class="n">handler</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">dir</span>
-  <span class="s">&#39;/users/&#39;</span><span class="o">,</span> <span class="n">r</span><span class="o">.</span><span class="n">file</span>
+  <span class="s">&#39;/users/&#39;</span><span class="o">,</span> <span class="n">r</span><span class="o">.</span><span class="n">path</span>
     <span class="s">&#39;/login&#39;</span><span class="o">,</span> <span class="o">...</span>
 </pre></div>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-function" id="host">
-  <div class="container section section-function">
-    <h2><span class='decl-name' id='host'>host</span> <span class='decl-arg decl-arg-var'>routes</span></h2>
-    <p>Route on HTTP <code>Host</code> header. Routes must be <code>(host, handler)</code> tuples; the first
-handler that corresponds to a non-strict superdomain is used. (For example,
-<code>spam.com</code> would match both <code>spam.com</code> and <code>eggs.spam.com</code>, but not <code>eggs.org</code>
-or <code>spam.com:8080</code>.)</p>
 
   </div>
 </div>

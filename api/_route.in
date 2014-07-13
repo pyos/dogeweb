@@ -26,12 +26,6 @@
   as specifying `str`.
 
 
-:function: pathregex path
-  Given a path route with wildcards, create a regex according to [wildcards](#wildcards).
-  Returns a `(regex, parsers)` tuple where `parsers` is a dict mapping group names
-  to parser functions from `wildcards`.
-
-
 :function: concrete args path
   Sort of a reverse of [pathregex](#pathregex); given a dict that maps group names
   to values and a path route with wildcards, construct a complete path.
@@ -39,37 +33,11 @@
   would result in `"/u/spam/"`.
 
 
-:function: router fn
-  A decorator (or a higher-level function) that wraps a router.
-  A router is a function that accepts either
-
-    * a fixed number of arguments, the last of which is a routing target;
-    * a variable number of arguments, all of which are routing targets;
-
-  where a routing target is either a function or a tuple in which the last item
-  is a function.
-
-  Unlike a normal function, a router
-
-    * can accept properties instead of functions; those are converted into
-      one-argument functions automatically. For example:
-
-      ```dg
-      f = g -> request -> g request
-      f $ ~> 'Hello, World!'
-      ```
-
-      would not work (a property is not callable), but
-
-      ```dg
-      f = router $ g -> request -> g request
-      f $ ~> 'Hello, World!'
-      ```
-
-      would;
-
-    * can handle requests with methods other than `GET` and `HEAD` even if outside
-      a [method](#method) router (normal functions would raise HTTP 405).
+:function: wraps f g
+  Basically same thing as [functools.update_wrapper](https://docs.python.org/3.4/library/functools.html#functools.update_wrapper)
+  (but with reversed order of arguments): this function copies metadata from function
+  `f` to function `g`. The only difference is that it does not overwrite attributes
+  already defined on `g`.
 
 
 :note:
@@ -81,20 +49,11 @@
   accept a keyword argument `name`.
 
 
-  If anonymous functions are not your style, all of these routers are
-  available as decorators.
-
-    * `Upgrade` → `upgrade`
-    * `Accept` → `accept`
-    * `Method` → `method`
-    * `File` → `file`
-    * `Dir` → `dir`
-    * `Host` → `host`
-
-  First, create an instance of the router of your choice:
+  If anonymous functions are not your style, all these routers can be used as decorators,
+  too. First, create an instance of the router of your choice:
 
   ```python
-  h = dogeweb.route.File()
+  h = dogeweb.route.path()
   ```
 
   Second, add some handlers through the `route` decorator:
@@ -105,25 +64,32 @@
       return 'Hello, World!'
   ```
 
-  Optionally, `add_route` can be used if the function already exists:
+  Optionally, `add` can be used if the function already exists:
 
   ```python
-  h.add_route('/hello/', 'hello_copy', hello)
+  h.add('/hello/', 'hello_copy', hello)
   ```
 
-  Third, use the `handler` attribute to convert this object into a function:
+  Third, use the router as you would a function:
 
   ```python
-  app = dogeweb.app(h.handler)
+  app = dogeweb.app(dogeweb.route.get(h))
   ```
 
   The result is roughly equivalent to
 
   ```dg
-  app = dogeweb.app $ dogeweb.route.file
-    '/',       'hello',      ~> 'Hello, World!'
-    '/hello/', 'hello_copy', ~> 'Hello, World!'
+  app = dogeweb.app $ dogeweb.route.get $ dogeweb.route.path
+    '/',       'hello',      request -> 'Hello, World!'
+    '/hello/', 'hello_copy', request -> 'Hello, World!'
   ```
+
+
+:function: host *: routes
+  Route on HTTP `Host` header. Routes must be `(host, handler)` tuples; the first
+  handler that corresponds to a non-strict superdomain is used. (For example,
+  `spam.com` would match both `spam.com`, `spam.com:8080` and `eggs.spam.com`,
+  but not `eggs.org`.)
 
 
 :function: upgrade *: routes
@@ -139,11 +105,45 @@
 
 
 :function: method *: routes
-  Route on HTTP method. Routes must be `(method, handler)` tuples. If this router is
-  not used, HTTP 405 is raised for methods other than `GET` and `HEAD`.
+  Route on HTTP method. Routes must be `(method, handler)` tuples.
 
 
-:function: file *: routes
+:function: get route
+  Normally, all handlers are allowed to accept all methods, unless explicitly
+  overriden via [method](#method). It is, however, common to create routes that
+  only handle GET request. Use this as a decorator to make a handler respond with HTTP 405
+  to other methods:
+
+  ```dg
+  # dg
+  greet_on_get = dogeweb.route.get $ request -> 'Hello, World!'
+  ```
+
+  ```python
+  # python
+  @dogeweb.route.get
+  def greet_on_get(request):
+      return 'Hello, World!'
+  ```
+
+:note:
+  If you're using the decorator form of [get](#get) with the decorator form of some
+  other router, note that the order is important!
+
+  ```python
+  # This would add a route that only handles GET requests:
+  @smth.route('/')
+  @dogeweb.route.get
+  def _(req): ...
+
+  # This is pure nonsense:
+  @dogeweb.route.get
+  @smth.route('/')
+  def _(req): ...
+  ```
+
+
+:function: path *: routes
   Route on the requested path. Routes must be `(path, handler)` or `(path, name, handler)`
   tuples. The `name` item is used for constructing URLs; see [request.Request.url_for](../request/#url_for).
   `path` may contain wildcards; see [WILDCARDRE](#WILDCARDRE), [wildcards](#wildcards), and
@@ -154,21 +154,14 @@
 
 
 :function: dir *: routes
-  Route between modules. The arguments are the same as for [file](#file), except the paths
-  must end with slashes. Unlike `file`, routes do not have to match the whole path,
-  only the beginning of it. Note that [file](#file) routes relative to the current module;
+  Route between modules. The arguments are the same as for [path](#path), except the paths
+  must end with slashes. Unlike `path`, routes do not have to match the whole path,
+  only the beginning of it. Note that [path](#path) routes relative to the current module;
   for example, if you have a module `/users/` and you wish to match `/users/login`,
   this is the structure you want:
 
   ```dg
   handler = r.dir
-    '/users/', r.file
+    '/users/', r.path
       '/login', ...
   ```
-
-
-:function: host *: routes
-  Route on HTTP `Host` header. Routes must be `(host, handler)` tuples; the first
-  handler that corresponds to a non-strict superdomain is used. (For example,
-  `spam.com` would match both `spam.com` and `eggs.spam.com`, but not `eggs.org`
-  or `spam.com:8080`.)

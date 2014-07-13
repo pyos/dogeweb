@@ -28,6 +28,26 @@
   This method does not return unless you manually stop the event loop.
 
 
+:function: property handler
+  (This function is only useful in dg.) Import this into a namespace to enable
+  a shorthand notation for handlers. Where you'd normally write
+
+  ```dg
+  handler = request -> do_something_with request.form
+  ```
+
+  you can instead do
+
+  ```dg
+  import '/dogeweb/property'
+
+  handler = ~> do_something_with @form
+  ```
+
+:note:
+  This overshadows the `property` built-in, so use carefully.
+
+
 :function: abort code (Optional info) (Optional headers)
   Same as [response.abort](response/#abort).
 

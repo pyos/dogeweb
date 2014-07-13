@@ -71,6 +71,29 @@ This method does not return unless you manually stop the event loop.</p>
 
   </div>
 </div>
+<div class="section-wrapper section-wrapper-function" id="property">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='property'>property</span> <span class='decl-arg'>handler</span></h2>
+    <p>(This function is only useful in dg.) Import this into a namespace to enable
+a shorthand notation for handlers. Where you&rsquo;d normally write</p>
+<div class="highlight"><pre><span class="n">handler</span> <span class="o">=</span> <span class="n">request</span> <span class="o">-&gt;</span> <span class="n">do_something_with</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span>
+</pre></div>
+
+<p>you can instead do</p>
+<div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/dogeweb/property&#39;</span>
+
+<span class="n">handler</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="n">do_something_with</span> <span class="o">@</span><span class="n">form</span>
+</pre></div>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-note" id="6">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>This overshadows the <code>property</code> built-in, so use carefully.</p>
+
+  </div>
+</div>
 <div class="section-wrapper section-wrapper-function" id="abort">
   <div class="container section section-function">
     <h2><span class='decl-name' id='abort'>abort</span> <span class='decl-arg'>code</span> <span class='decl-arg decl-arg-opt'>info</span> <span class='decl-arg decl-arg-opt'>headers</span></h2>

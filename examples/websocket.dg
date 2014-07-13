@@ -4,6 +4,7 @@ import '/collections'
 
 import '/dogeweb'
 import '/dogeweb/r'
+import '/dogeweb/property'
 import '/dogeweb/websocket'
 
 
@@ -11,8 +12,8 @@ monotonic = itertools.count!
 clients   = set!
 
 
-app = dogeweb.app $ r.file
-  '/', r.upgrade
+app = dogeweb.app $ r.path
+  '/', r.get $ r.upgrade
     # `r.upgrade` routes between protocols.
     # If the client does not want to change protocols, it will use `http`.
     'http', ~> @static attachment: False $ os.path.join (os.path.dirname __file__) 'websocket.html'

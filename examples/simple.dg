@@ -4,6 +4,10 @@ import '/posixpath/normpath'
 
 import '/dogeweb'
 import '/dogeweb/r'
+# Normally, all handlers are `request -> response` functions.
+# Importing `property` into the namespace allows to use `~> response` properties
+# instead; the request is passed as `self` (aka `@`.)
+import '/dogeweb/property'
 
 # http://github.com/pyos/jinja-hamlike
 import '/hamlike'
@@ -21,15 +25,16 @@ app = dogeweb.app $ r.dir
   #
   # Instant 2X APPLICATION COMBO!
   #
-  '/request/', r.file
-    # `r.file` routes between subpaths relative to the current module.
-    '/method/',   ~> '{}\n'.format @method
-    '/path/',     ~> '{}\n'.format @path
+  '/request/', r.path
+    # `r.path` routes between subpaths relative to the current module.
+    # `r.get` returns an error if the request is not `GET`.
+    '/method/', r.get $ ~> '{}\n'.format @method
+    '/path/',   r.get $ ~> '{}\n'.format @path
     # Paths may contain wildcards; `<str:something>`, for example, would
     # match any string that does not contain slashes and pass it as a keyword
     # argument "something" to the handler. See `dogeweb.route.wildcards` for available
     # types.
-    '/attr/<str:name>/', name ~> '{}\n'.format $ getattr self name None
+    '/attr/<str:name>/', r.get $ name ~> '{}\n'.format $ getattr self name None
     # `r.method` is another router; it should be rather straightforward.
     '/payload/', r.method
       'GET',  ~> 'POST something here.\n'
@@ -38,7 +43,7 @@ app = dogeweb.app $ r.dir
   # Each route is a function that accepts a request as its first argument
   # and returns a response. In dg, `~> x` creates a property instead;
   # that's acceptable, too.
-  '/static/', ~>
+  '/static/', r.get $ ~>
     # The only requirement for `r.dir` is that the requested path starts with
     # the specified directory. The rest of the path can be anything.
     # (NOTE: it can even contain stuff like `..`, so normalize it first.
@@ -47,8 +52,10 @@ app = dogeweb.app $ r.dir
     # while `parent` is the path to the module itself.
     @static $ os.path.join (os.path.dirname __file__) $ (normpath @path).lstrip '/'
 
-  '/route/', 'test_route', r.file
-    # Normally, each argument to `r.dir` or `r.file` is a 2-tuple `(path, handler)`.
+  # Decorators can be applied in any order; for example, all paths in this directory
+  # accept GET only, so we do `r.get` first, unlike in `/request/`.
+  '/route/', 'test_route', r.get $ r.path
+    # Normally, each argument to `r.dir` or `r.path` is a 2-tuple `(path, handler)`.
     # There is an optional second item, though, which specifies the name for this route.
     '/parent/', 'parent', ~> '{}\n'.format @parent
     # This name can be used to generate URLs; e.g. in order to create a link
@@ -59,7 +66,7 @@ app = dogeweb.app $ r.dir
     '/<int:id>/', 'something', id ~> 'Got item #{}.\n'.format id
     '/first/',    'to_id_1',      ~> @redirect $ @url_for '.something' id: 1
 
-  '/', r.file
+  '/', r.get $ r.path
     '/',             ~> somepage
     '/favicon.ico',  ~> @redirect '/static/favicon.ico'
     '/async/sleep/', ~>

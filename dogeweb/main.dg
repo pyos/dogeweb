@@ -70,8 +70,11 @@ Server = subclass object where
         close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
                 'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers
         close => raise CancelledError
-    err :: ConnectionError =>
-    finally                => writer.close!
+    err :: CancelledError       => raise err
+    err :: ConnectionError      =>
+    err :: ConnectionResetError =>
+    err :: Exception => @log.fatal 'error in http handler' exc_info: True, raise CancelledError
+    finally => writer.close!
 
   #: The default error handler. Do not use it. EVER.
   #:

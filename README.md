@@ -23,13 +23,13 @@ for something slightly more complex.
 import dg
 import dogeweb
 
-root = dogeweb.r.File()
+root = dogeweb.r.file()
 
 @root.route('/')
 def hello(request):
     return 'Hello, World!'
 
-app = dogeweb.app(root.handler)
+app = dogeweb.app(root)
 ```
 
 ### Running in development

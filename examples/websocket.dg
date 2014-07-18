@@ -20,32 +20,32 @@ app = dogeweb.app $ r.path
 
     # `request.websocket handler` returns a `Response` that initiates
     # a websocket handshake and calls into the handler when done.
-    'websocket', ~> @websocket $ input output ->
+    'websocket', ~> @websocket $ ch ->
       id  = next monotonic
       idb = (str id).encode 'ascii'
-      # `output` has five methods:
+      # `ch` is a simple queue. Five methods send stuff to the client:
       #   * `ping` requests a `pong`;
       #   * `pong` responds to a `ping`;
       #   * `close [code] [message]` gracefully ends the connection;
       #   * `data something` transfers some binary data;
       #   * `text something` transfers text, but you should encode it anyway.
-      for client in clients => yield from $ client.text $ b'S ' + idb + b' connected'
-      clients.add output
+      for w in clients => yield from $ w.text $ b'S ' + idb + b' connected'
+      clients.add ch
 
       except
         err => while True =>
-          # The input queue is a coroutine that returns the next message.
+          # And `yield from` returns the next message.
           # If there are no more messages to be consumed, it cancels this task (i.e.
           # raises `asyncio.CancelledError`.)
-          msg = yield from input
+          msg = yield from ch
 
           # A message is a bytestring with additional attributes `tp` (the opcode),
           # `is_text`, `is_data`, `is_ping`, and `is_pong`. (Pings are handled automatically.)
           if msg.is_text => for w in clients => yield from $ w.text $ b'M ' + idb + b' ' + msg
              msg.is_data => for w in clients => yield from $ w.data $ b'M ' + idb + b' ' + msg
         finally =>
-          clients.remove output
-          for client in clients => yield from $ client.text $ b'S ' + idb + b' disconnected'
+          clients.remove ch
+          for w in clients => yield from $ w.text $ b'S ' + idb + b' disconnected'
 
 
 app.run '0.0.0.0' 8000

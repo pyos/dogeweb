@@ -87,19 +87,16 @@ Message = subclass bytes where
   is_close = ~> @tp == CLOSE
 
 
-Reader = subclass object where
+WebSocket = subclass object where
   __init__ = self @reader @writer ->
   __iter__ = self -> while True =>
     msg = except
       err => yield from $ parse @reader
       err :: asyncio.IncompleteReadError => raise asyncio.CancelledError
-    if msg.is_ping  => yield from @writer.pong
+    if msg.is_ping  => yield from @pong
        msg.is_close => raise $ asyncio.CancelledError msg
        otherwise    => raise $ StopIteration msg
 
-
-Writer = subclass object where
-  __init__ = @writer ~>
   _head    = code ln   ~> bytes (((code != CONT) << 7) | code, ln)
   _frame   = code data ~>
     ln = len data
@@ -142,10 +139,7 @@ Response = subclass response.Response where
   #:
   #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  communicate = reader writer ~>
-    writer = Writer writer
-    reader = Reader reader writer
-    @handler reader writer
+  communicate = reader writer ~> @handler $ WebSocket reader writer
 
 
 ContextAware = subclass object where

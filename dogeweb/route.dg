@@ -89,7 +89,7 @@ _issameas = path (d, ns, fs, regex) -> (m = regex.match path) and (d or m.end! =
 #:
 #: slash :: Request -> Response
 #:
-_slash = req **: _ -> req.redirect $ req.fullpath + '/'
+_slash = req **: _ -> req.redirect code: 301 $ req.fullpath + '/'
 
 
 #: A factory that produces factories of functions that route requests based

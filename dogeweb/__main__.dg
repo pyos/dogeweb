@@ -1,0 +1,117 @@
+import '/os'
+import '/stat'
+import '/argparse'
+import '/mimetypes'
+import '/xml/sax/saxutils/escape'
+
+import 'r'
+import 'app'
+import 'property'
+
+
+size = x ->
+  prefixes = 'B', 'KiB', 'MiB', 'GiB', 'TiB'
+  sizes    =       1024,  1024,  1024,  1024
+
+  for (sz, p) in zip sizes prefixes => if
+    x / sz > 1 => x /= sz
+    otherwise  => break!
+  '{:.2f} {}'.format x p
+
+
+index = dir nonroot ~>
+  head = '''<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Index of {0}</title>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Index of {0}</h1>
+          <table class="table table-striped">
+            <thead>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Type</th>
+            </thead>'''.format @path
+  tail = '''</table>
+        </div>
+      </body>
+    </html>'''
+
+  body = ''.join
+    where
+      files = os.listdir dir
+      stats = list $ zip files $ map os.stat $ map (x -> os.path.join dir x) files
+      stats.sort key: ((n, st) -> not $ stat.S_ISDIR st.st_mode, n)
+
+      nonroot =>
+        yield $ '''<tr>
+          <td><span class="fa fa-folder"></span> <a href="..">..</a></td>
+          <td>--</td>
+          <td>--</td>
+        </tr>'''
+
+      for (name, st) in stats =>
+        mode  = st.st_mode
+        mime  = mimetypes.guess_type name strict: False !! 0 or 'application/octet-stream'
+        class = if
+          stat.S_ISDIR  mode => 'fa-folder'
+          stat.S_ISCHR  mode => 'fa-desktop'
+          stat.S_ISBLK  mode => 'fa-database'
+          stat.S_ISFIFO mode => 'fa-cloud'
+          stat.S_ISSOCK mode => 'fa-cloud'
+          mime.startswith 'image/' => 'fa-file-image-o'
+          mime.startswith 'video/' => 'fa-file-video-o'
+          mime.startswith 'text/'  => 'fa-file-text'
+          otherwise                => 'fa-file'
+
+        tsize, tmime = if
+          stat.S_ISDIR mode => '--', '--'
+          otherwise         => size st.st_size, mime
+
+        yield $ '''<tr>
+          <td><span class="fa {0}"></span> <a href="{1}">{1}</a></td>
+          <td>{2}</td>
+          <td>{3}</td>
+        </tr>'''.format class (escape name) tsize tmime
+
+  head + body + tail
+
+
+this = app $ r.get $ ~>
+  path = os.path.normpath @path
+  path = path.lstrip '/' or os.curdir
+  if not $ os.path.isdir path => @static attachment: False path
+     not $ @path.endswith '/' => @redirect $ @fullpath + '/'
+     otherwise                =>
+       ifile = os.path.join path 'index.html'
+       if os.path.isfile ifile => @static ifile attachment: False
+          otherwise => index self path $ @path != '/'
+
+
+parser = argparse.ArgumentParser!
+parser.add_argument 'port' action: 'store' default: 8000 type: int nargs: '?'
+args = parser.parse_args!
+
+
+except
+  err =>
+    App = subclass $ import '/gunicorn/app/wsgiapp/WSGIApplication' pure where
+      load        = self -> this
+      load_config = self ->
+        @cfg.set 'workers'      $ 2
+        @cfg.set 'worker_class' $ __package__ + '.gunicorn.Worker'
+        @cfg.set 'bind'         $ ':{}'.format args.port
+        None
+
+    App!.run!
+  err :: KeyboardInterrupt =>
+  err :: ImportError => except
+    err => this.run '' args.port
+    err :: KeyboardInterrupt =>

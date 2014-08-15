@@ -1,3 +1,4 @@
+import '/re'
 import '/cgi'
 import '/json'
 import '/zlib'
@@ -16,29 +17,23 @@ import 'struct'
 #: status :: str -> (str, str, (int, int))
 #:
 status = line ->
-  method, _, rest  = line.partition ' '
-  path, _, version = rest.partition ' '
+  method, path, version = line.split ' ' 3
   version.startswith 'HTTP/1.' or raise ValueError
-  version = 1, int $ version !! slice 7 None
-  method, path, version
+  method, path, (1, int $ version !! slice 7 None)
 
 
-#: Parse a list of HTTP headers.
+#: Parse HTTP headers.
 #:
 #:   header = first_line continuation*
 #:   first_line   = name ':' value
-#:   continuation = (' ' | '\t') value
+#:   continuation = (' ' | '\t')+ value
 #:
-#: headers :: [str] -> Headers
+#: headers :: str -> Headers
 #:
-headers = lines -> struct.Headers
-  where for (i, line) in enumerate lines 1 => if
-    line !! 0 in ' \t' =>  # a continuation line; has already been consumed.
-    not $ ':' in line  =>  # not a valid header
-    otherwise =>
-      line += ''.join $ takewhile (x -> x and x !! 0 in ' \t') $ drop i lines
-      n, v  = line.split ':' 1
-      yield (n.strip!, v.strip!)
+headers = lines _continuation_re: (re.compile '\r\n[ \t]+').sub -> struct.Headers
+  where for line in (_continuation_re '' lines).split '\r\n' => line =>
+    n, v = line.split ':' 1
+    yield (n.strip!, v.strip!)
 
 
 #: Parse an `Accept` HTTP header.
@@ -145,7 +140,7 @@ multipart = data boundary encoding: 'utf-8' ->
     head    = data !! slice None start
     content = data !! slice (start + 4) finish
     data    = data !! slice (finish + len sep) None
-    head    = headers $ (head.decode 'iso-8859-1').split '\r\n'
+    head    = headers $ head.decode 'iso-8859-1'
 
     disp, attrs = cgi.parse_header $ head.get 'Content-Disposition' ''
     name  = attrs.get 'name'     None
@@ -166,13 +161,16 @@ multipart = data boundary encoding: 'utf-8' ->
 #: io_request :: StreamReader -> coroutine (str, str, (int, int), Headers, bytes)
 #:
 io_request = reader ->
-  lines = list!
-  while (x = yield from reader.readline!) != b'\r\n' =>
-    x.endswith b'\r\n' or raise (IncompleteReadError x -1)
-    x = x !! slice None -2
-    lines.append $ x.decode 'iso-8859-1'
-  _status  = status  $ lines.pop 0
-  _headers = headers $ lines
+  buffer = b''
+  marker = False
+  while not marker =>
+    buffer += yield from (reader.read 8196) or raise ConnectionError
+    buffer, marker, rest = buffer.partition b'\r\n\r\n'
+  reader._buffer = bytearray rest + reader._buffer
+
+  x, xs    = buffer.decode 'iso-8859-1' |>.replace '\r\n ' '' |>.split '\r\n' 1
+  _status  = status  x
+  _headers = headers xs
   # NOTE `Sec-WebSocket-Key1` implies `Content-Length` of 8.
   #      This is an old standard, however; `.websocket` does not support it.
   body_length   = _headers.get 'content-length'
@@ -182,10 +180,8 @@ io_request = reader ->
     body_transfer == 'chunked' => yield from $ io_payload_chunked reader
     body_length                => yield from $ reader.readexactly $ int body_length
     otherwise                  => b''
-  _payload = if
-    body_encoding == 'deflate' => zlib.decompress _payload 15
-    body_encoding == 'gzip'    => zlib.decompress _payload 31
-    otherwise                  => _payload
+  if body_encoding == 'deflate' => _payload = zlib.decompress _payload 15
+     body_encoding == 'gzip'    => _payload = zlib.decompress _payload 31
   _status + (_headers, _payload)
 
 
@@ -216,13 +212,11 @@ io_response = writer (major, minor) code headers body ->
   h = '\r\n'.join $ map ': '.join headers.items!
   h = 'HTTP/%s.%s %s %s\r\n%s\r\n\r\n' % (major, minor, code, responses.get code 'Unknown', h)
   writer.write $ h.encode 'latin-1'
-  yield from writer.drain!
 
   if
     headers.get 'transfer-encoding' == 'chunked' =>
       for chunk in body => chunk =>
         writer.write $ ('%x\r\n' % len chunk).encode 'ascii' + chunk + b'\r\n'
-        yield from writer.drain!
       writer.write b'0\r\n\r\n'
     otherwise => for chunk in body => writer.write chunk
   yield from writer.drain!

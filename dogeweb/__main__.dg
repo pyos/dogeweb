@@ -98,7 +98,7 @@ this = app $ r.get $ ~>
 parser = argparse.ArgumentParser!
 parser.add_argument 'port' action: 'store' default: 8000 type: int nargs: '?'
 args = parser.parse_args!
-
+print $ 'http://localhost:{}/'.format args.port
 
 except
   err =>

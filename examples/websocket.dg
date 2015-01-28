@@ -21,15 +21,14 @@ app = dogeweb.app $ r.path
     # `request.websocket handler` returns a `Response` that initiates
     # a websocket handshake and calls into the handler when done.
     'websocket', ~> @websocket $ ch ->
-      id  = next monotonic
-      idb = (str id).encode 'ascii'
+      id = str $ next monotonic
       # `ch` is a simple queue. Five methods send stuff to the client:
       #   * `ping` requests a `pong`;
       #   * `pong` responds to a `ping`;
       #   * `close [code] [message]` gracefully ends the connection;
       #   * `data something` transfers some binary data;
-      #   * `text something` transfers text, but you should encode it anyway.
-      for w in clients => yield from $ w.text $ b'S ' + idb + b' connected'
+      #   * `text something` transfers Unicode text.
+      for w in clients => yield from $ w.text $ 'S ' + id + ' connected'
       clients.add ch
 
       except
@@ -38,14 +37,15 @@ app = dogeweb.app $ r.path
           # If there are no more messages to be consumed, it cancels this task (i.e.
           # raises `asyncio.CancelledError`.)
           msg = yield from ch
-
-          # A message is a bytestring with additional attributes `tp` (the opcode),
-          # `is_text`, `is_data`, `is_ping`, and `is_pong`. (Pings are handled automatically.)
-          if msg.is_text => for w in clients => yield from $ w.text $ b'M ' + idb + b' ' + msg
-             msg.is_data => for w in clients => yield from $ w.data $ b'M ' + idb + b' ' + msg
+          # A message is either a bytestring or a unicode string with additional attributes
+          # `tp` (the opcode), `is_text`, `is_data`, `is_ping`, and `is_pong`.
+          # Pings are handled automatically, and pongs shouldn't bother you; the most
+          # important distinction is between text and data. `msg.is_text` iff `msg :: str`,
+          # otherwise `msg :: bytes`.
+          msg :: str => for w in clients => yield from $ w.text $ 'M ' + id + ' ' + msg
         finally =>
           clients.remove ch
-          for w in clients => yield from $ w.text $ b'S ' + idb + b' disconnected'
+          for w in clients => yield from $ w.text $ 'S ' + id + ' disconnected'
 
 
 app.run '0.0.0.0' 8000

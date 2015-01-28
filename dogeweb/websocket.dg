@@ -73,9 +73,14 @@ parse_frame = buf ->
     otherwise => b''
 
 
-Message = subclass bytes where
+Message = subclass object where
   __new__ = tp data extra ~>
-    self = bytes.__new__ self data
+    self = if
+      tp != TEXT => bytes.__new__ DataMessage data
+      otherwise  => str.__new__   TextMessage $ except
+        err => data.decode 'utf-8'
+        err :: UnicodeDecodeError => raise $ asyncio.CancelledError er
+
     self.tp    = tp
     self.extra = extra
     self
@@ -85,6 +90,10 @@ Message = subclass bytes where
   is_data  = ~> @tp == DATA
   is_text  = ~> @tp == TEXT
   is_close = ~> @tp == CLOSE
+
+
+DataMessage = subclass Message bytes where
+TextMessage = subclass Message str   where
 
 
 WebSocket = subclass object where
@@ -110,8 +119,8 @@ WebSocket = subclass object where
 
   ping  = data ~> @_frame PING data
   pong  = data ~> @_frame PONG data
-  text  = data ~> @_frame TEXT data
   data  = data ~> @_frame DATA data
+  text  = data ~> @_frame TEXT $ data.encode 'utf-8'
   close = code: 1000 data: b'' ~> @_frame CLOSE $ code.to_bytes 2 'big' + data
 
 
@@ -155,7 +164,7 @@ ContextAware = subclass object where
     ver = @headers.get 'Sec-WebSocket-Version'
     key = @headers.get 'Sec-WebSocket-Key'
 
-    if not $ ver in ('13', '8', '7') => @abort 400 'Unsupported WebSocket version.'
+    if not $ ver == '13' => @abort 400 'Unsupported WebSocket version.'
        not $ (except
          err => len (base64.b64decode key) == 16
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'

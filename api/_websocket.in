@@ -2,7 +2,8 @@
 
 
 :class: Message
-  A subclass of `bytes` that encodes a single message.
+  A single WebSocket message. Note that you'll be seeing the subclasses of this instead;
+  see below.
 
 :attribute: is_ping
   Should never appear if you're using a [Reader](#Reader) (it handles pings automatically.)
@@ -21,28 +22,50 @@
   The connection has already been closed.
 
 
-:class: Reader
+:class: DataMessage
+  A message with type other than "text". Is a subclass of `bytes`; contains the data.
+
+
+:class: TextMessage
+  A message with type "text". Is a subclass of `str`; contains the data, too.
+
+
+:class: WebSocket
   A special coroutine-like object that waits for the next message and returns it
   when used with `yield from`. Raises `asyncio.CancelledError` if the connection
   gets closed; the first argument of the exception, if it exists, is
   a [Message](#Message) received before closing the connection (it will have `is_close`
-  set to `True`.)
-
-
-:class: Writer
-  An object that allows one to send messages easily.
+  set to `True`.) Other than that, it can send data, too:
 
 :method: ping payload
-  Send a ping.
+  Send a ping. This method is a *coroutine* which waits until all data is sent.
+  (Note that waiting on it is not necessary to send data; feel free to forget the
+  `yield from`.)
 
 :method: pong payload
-  Respond to a ping.
+  Respond to a ping. Done automatically. Also a coroutine.
 
 :method: text payload
-  Send some text. Note that `payload` must still be a `bytes` object.
+  Send some text. A coroutine.
 
 :method: data payload
-  Send some binary data.
+  Send some binary data. A coroutine.
 
 :method: close (Optional code) (Optional data)
   Send a `close` message. **No other messages can be sent after that.**
+  This method also cancels the task that calls it, just to drive that point home.
+  A coroutine.
+
+
+:function: client path reader writer
+  Create a client-side half of the WebSocket stream given a standard asyncio `StreamReader`
+  and `StreamWriter`. Note that this is a server-side framework, so client-side functionality
+  is not really outstanding; for example, this function only supports HTTP/1.1 and only
+  sends the minimal headers (which are hardcoded). Returns a [WebSocket](#WebSocket)
+  object.
+
+  ```dg
+  io = yield from $ asyncio.open_connection 'websocket.host' 80
+  ws = yield from $ websocket.client '/websocket_node/' *: io
+  ws.text 'ok'
+  ```

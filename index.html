@@ -168,13 +168,13 @@
         <h3 class="text-center">Modern</h3>
         <div class="highlight"><pre><span class="text-muted">wssrv = r.upgrade</span>
   <span class="text-muted">'http',      ~> @abort 405</span>
-  <span class="s">&#39;websocket&#39;</span><span class="o">,</span> <span class="o">~&gt;</span> <span class="o">@</span><span class="n">websocket</span> <span class="o">$</span> <span class="nb">input</span> <span class="n">output</span> <span class="o">-&gt;</span>
-    <span class="n">outputs</span><span class="o">.</span><span class="n">add</span> <span class="n">output</span>
+  <span class="s">&#39;websocket&#39;</span><span class="o">,</span> <span class="o">~&gt;</span> <span class="o">@</span><span class="n">websocket</span> <span class="o">$</span> <span class="nb">io</span> <span class="o">-&gt;</span>
+    <span class="n">outputs</span><span class="o">.</span><span class="n">add</span> <span class="n">io</span>
     <span class="kr">except
       <span class="n">err</span> <span class="o">=&gt;</span> <span class="kr">while</span> <span class="cb">True</span> <span class="o">=&gt;</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="kr">yield</span> <span class="n">from</span> <span class="n">input</span>
-        <span class="n">msg</span><span class="o">.</span><span class="n">is_data</span> <span class="o">=&gt;</span> <span class="kr">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outputs</span> <span class="o">=&gt;</span> <span class="n">o</span><span class="o">.</span><span class="n">data</span> <span class="n">msg</span>
-      <span class="kr">finally</span> <span class="o">=&gt;</span> <span class="n">outputs</span><span class="o">.</span><span class="n">remove</span> <span class="n">output</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="kr">yield</span> <span class="kr">from</span> <span class="n">io</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">is_data</span> <span class="o">=&gt;</span> <span class="kr">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outputs</span> <span class="o">=&gt;</span> <span class="kr">yield</span> <span class="kr">from</span> <span class="o">$</span> </span><span class="n">o</span><span class="o">.</span><span class="n">data</span> <span class="n">msg</span>
+      <span class="kr">finally</span> <span class="o">=&gt;</span> <span class="n">outputs</span><span class="o">.</span><span class="n">remove</span> <span class="n">io</span>
 </pre></div>
       </div>
 

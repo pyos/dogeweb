@@ -21,6 +21,10 @@
 :attribute: payload
   The request body as a `bytes` object.
 
+:attribute: app
+  The instance of the application that handled this requests, i.e. the thing created
+  with [app](../#app).
+
 :attribute: handler
   The top-level handler this request was passed to (the one you created an instance of
   [app](../#app) with.)
@@ -103,8 +107,19 @@
 :method: websocket handler
   Initiate a websocket handshake. May abort the request with 400; if not, returns a
   [response.Response](../response/#Response) with appropriate headers. After these are sent,
-  `handler` will be called with a reader and a writer. See [websocket.Reader](../websocket/#Reader)
-  and [websocket.Writer](../websocket/#Writer) for details.
+  `handler` will be called with a WebSocket stream. See [websocket.WebSocket](../websocket/#WebSocket)
+  for details.
+
+:method: websocket_pair handler
+  Wait until someone else connects to the same node, then call the handler with both
+  WebSocket streams at once. Returns an appropriate [response.Response](../response/#Response).
+  See [websocket.WebSocket](../websocket/#WebSocket) for details.
+
+:method: websocket_mux *: streams
+  Connect multiple [websocket.WebSocket](../websocket/#WebSocket) streams into a
+  read-only one that emits data from all of these streams. Instead of just `message`, it
+  returns `(stream, message)` pairs when yielded from. The first websocket to disconnect
+  aborts the whole connection.
 
 :note:
   The following methods do not use any info from the request; they're shortcuts.

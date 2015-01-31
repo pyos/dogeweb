@@ -35,7 +35,8 @@
     <div class="section-wrapper section-wrapper-class" id="Message">
   <div class="container section section-class">
     <h2><span class='decl-name' id='Message'>Message</span></h2>
-    <p>A subclass of <code>bytes</code> that encodes a single message.</p>
+    <p>A single WebSocket message. Note that you&rsquo;ll be seeing the subclasses of this instead;
+see below.</p>
 
   </div>
 </div>
@@ -75,56 +76,82 @@ The connection has already been closed.</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-class" id="Reader">
+<div class="section-wrapper section-wrapper-class" id="DataMessage">
   <div class="container section section-class">
-    <h2><span class='decl-name' id='Reader'>Reader</span></h2>
+    <h2><span class='decl-name' id='DataMessage'>DataMessage</span></h2>
+    <p>A message with type other than &ldquo;text&rdquo;. Is a subclass of <code>bytes</code>; contains the data.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="TextMessage">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='TextMessage'>TextMessage</span></h2>
+    <p>A message with type &ldquo;text&rdquo;. Is a subclass of <code>str</code>; contains the data, too.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-class" id="WebSocket">
+  <div class="container section section-class">
+    <h2><span class='decl-name' id='WebSocket'>WebSocket</span></h2>
     <p>A special coroutine-like object that waits for the next message and returns it
 when used with <code>yield from</code>. Raises <code>asyncio.CancelledError</code> if the connection
 gets closed; the first argument of the exception, if it exists, is
 a <a href="#Message">Message</a> received before closing the connection (it will have <code>is_close</code>
-set to <code>True</code>.)</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-class" id="Writer">
-  <div class="container section section-class">
-    <h2><span class='decl-name' id='Writer'>Writer</span></h2>
-    <p>An object that allows one to send messages easily.</p>
+set to <code>True</code>.) Other than that, it can send data, too:</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="ping">
   <div class="container section section-method">
     <h2><span class='decl-name' id='ping'>ping</span> <span class='decl-arg'>payload</span></h2>
-    <p>Send a ping.</p>
+    <p>Send a ping. This method is a <em>coroutine</em> which waits until all data is sent.
+(Note that waiting on it is not necessary to send data; feel free to forget the
+<code>yield from</code>.)</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="pong">
   <div class="container section section-method">
     <h2><span class='decl-name' id='pong'>pong</span> <span class='decl-arg'>payload</span></h2>
-    <p>Respond to a ping.</p>
+    <p>Respond to a ping. Done automatically. Also a coroutine.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="text">
   <div class="container section section-method">
     <h2><span class='decl-name' id='text'>text</span> <span class='decl-arg'>payload</span></h2>
-    <p>Send some text. Note that <code>payload</code> must still be a <code>bytes</code> object.</p>
+    <p>Send some text. A coroutine.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="data">
   <div class="container section section-method">
     <h2><span class='decl-name' id='data'>data</span> <span class='decl-arg'>payload</span></h2>
-    <p>Send some binary data.</p>
+    <p>Send some binary data. A coroutine.</p>
 
   </div>
 </div>
 <div class="section-wrapper section-wrapper-method" id="close">
   <div class="container section section-method">
     <h2><span class='decl-name' id='close'>close</span> <span class='decl-arg decl-arg-opt'>code</span> <span class='decl-arg decl-arg-opt'>data</span></h2>
-    <p>Send a <code>close</code> message. <strong>No other messages can be sent after that.</strong></p>
+    <p>Send a <code>close</code> message. <strong>No other messages can be sent after that.</strong>
+This method also cancels the task that calls it, just to drive that point home.
+A coroutine.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="client">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='client'>client</span> <span class='decl-arg'>path</span> <span class='decl-arg'>reader</span> <span class='decl-arg'>writer</span></h2>
+    <p>Create a client-side half of the WebSocket stream given a standard asyncio <code>StreamReader</code>
+and <code>StreamWriter</code>. Note that this is a server-side framework, so client-side functionality
+is not really outstanding; for example, this function only supports HTTP/1.1 and only
+sends the minimal headers (which are hardcoded). Returns a <a href="#WebSocket">WebSocket</a>
+object.</p>
+<div class="highlight"><pre><span class="n">io</span> <span class="o">=</span> <span class="kr">yield</span> <span class="n">from</span> <span class="o">$</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span> <span class="s">&#39;websocket.host&#39;</span> <span class="mi">80</span>
+<span class="n">ws</span> <span class="o">=</span> <span class="kr">yield</span> <span class="n">from</span> <span class="o">$</span> <span class="n">websocket</span><span class="o">.</span><span class="n">client</span> <span class="s">&#39;/websocket_node/&#39;</span> <span class="o">*:</span> <span class="n">io</span>
+<span class="n">ws</span><span class="o">.</span><span class="n">text</span> <span class="s">&#39;ok&#39;</span>
+</pre></div>
 
   </div>
 </div>

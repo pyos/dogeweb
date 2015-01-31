@@ -1,5 +1,6 @@
 import '/asyncio'
 import '/base64'
+import '/random'
 import '/hashlib'
 import '/itertools'
 
@@ -121,7 +122,10 @@ WebSocket = subclass object where
   pong  = data ~> @_frame PONG data
   data  = data ~> @_frame DATA data
   text  = data ~> @_frame TEXT $ data.encode 'utf-8'
-  close = code: 1000 data: b'' ~> @_frame CLOSE $ code.to_bytes 2 'big' + data
+  close = code: 1000 data: b'' ~>
+    except err => yield from $ @_frame CLOSE $ code.to_bytes 2 'big' + data
+           err :: ConnectionError =>
+    raise $ asyncio.CancelledError 'closed from this side'
 
 
 Response = subclass response.Response where
@@ -154,7 +158,7 @@ Response = subclass response.Response where
 ContextAware = subclass object where
   #: Create a WebSocket from this request.
   #:
-  #: websocket :: (Reader Writer -> coroutine a) -> Response
+  #: websocket :: (WebSocket -> coroutine a) -> Response
   #:
   websocket = handler ~>
     if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')
@@ -169,3 +173,105 @@ ContextAware = subclass object where
          err => len (base64.b64decode key) == 16
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'
     Response handler key
+
+  #: Create a pair of WebSocket stream. The first stream is this request; the second
+  #: is the next to connect to the same endpoint. Only the first handler will get
+  #: to manipulate these streams; the other will wait until it's done, then abort.
+  #:
+  #: websocket_pair :: (WebSocket WebSocker -> coroutine a) -> Response
+  #:
+  websocket_pair = handler ~> @websocket $ io ->
+    syn  = getattr @app '_ws_syn'  None
+    ack  = getattr @app '_ws_ack'  None
+    fin  = getattr @app '_ws_fin'  None
+    pair = getattr @app '_ws_pair' None
+    pair is None =>
+      # In short, the algorithm is this:
+      # 0. Publish our connection.
+      @app._ws_pair = io
+      @app._ws_syn  = syn = asyncio.Future loop: @loop
+      @app._ws_ack  = ack = asyncio.Future loop: @loop
+      @app._ws_fin  = fin = asyncio.Future loop: @loop
+      read = asyncio.async loop: @loop $ iter io
+      # 1. Block until SYN. The other connection will emit it upon grabbing our socket.
+      done, _ = except
+        err     => yield from $ asyncio.wait (read, syn) loop: @loop return_when: asyncio.FIRST_COMPLETED
+        finally =>
+          # 1.5. If something appears in the socket in the meantime (or some shit happens),
+          #      abort.
+          read.done! or err =>
+            not syn.done! => syn.set_result None
+            not ack.done! => ack.set_result None
+            not fin.done! => fin.set_result None
+          @app.~_ws_pair
+          @app.~_ws_syn
+          @app.~_ws_ack
+          @app.~_ws_fin
+          # 2. Make sure nothing attempts to read from the socket.
+          read.cancel!
+          except err => yield from read
+                 err :: asyncio.CancelledError =>
+
+      not $ read in done =>
+        # 3. Emit ACK. This signals that our socket is free to read from.
+        ack.set_result None
+        # 4. Block until FIN, ignore the socket. The other connection will handle everything.
+        except _       => yield from fin
+               finally => not fin.done! => fin.set_result None
+      # 5. Close the connection.
+      yield from $ io.close 0
+
+    # On the other side of things: 1. emit SYN.
+    syn.set_result None
+    # 2. Wait until ACK. The other side will finalize it if something happens,
+    #    so no `finally` this time.
+    yield from ack
+    # 3. Do stuff, then emit FIN when done.
+    except _       => yield from $ handler io pair
+           finally => not fin.done! => fin.set_result None
+
+  #: Read frames from multiple websockets at once, return a (websocket, frame) pair
+  #: every time a frame is received.
+  #:
+  #: websocket_mux :: WebSocket... -> coroutine (WebSocket, Message)
+  #:
+  websocket_mux = *: socks ~>
+    socks = dict
+      where for s in socks => yield (asyncio.async loop: @loop $ iter s, s)
+
+    PseudoCoroutine = subclass object where __iter__ = _ ->
+      done, _ = yield from $ asyncio.wait socks loop: @loop return_when: asyncio.FIRST_COMPLETED
+      done =>
+        sock = socks.pop $ fst done
+        socks !! asyncio.async loop: @loop (iter sock) = sock
+        sock, yield from $ fst done
+    PseudoCoroutine!
+
+
+#: Start a client-side WebSocket connection.
+#:
+#: client :: str StreamReader StreamWriter -> WebSocket
+#:
+client = path rd wr ->
+  key = base64.b64encode $ bytes (where for _ in range 16 => yield $ random.randrange 256)
+  wr.write $ b'GET ' + path.encode 'latin-1' + b' HTTP/1.1\r\n'
+  wr.write $ b'Upgrade: websocket\r\n'
+  wr.write $ b'Connection: upgrade\r\n'
+  wr.write $ b'Sec-WebSocket-Version: 13\r\n'
+  wr.write $ b'Sec-WebSocket-Key: ' + key +  b'\r\n'
+  wr.write $ b'\r\n'
+
+  header = yield from $ rd.readline!
+  header != b'HTTP/1.1 101 Switching Protocols\r\n' => raise $ ConnectionError 'handshake failed'
+
+  while True =>
+    header = yield from $ rd.readline!
+    header == b'\r\n' => break!
+    n, val = header.split b' ' 1
+    if n.lower! == b'sec-websocket-accept' =>
+      # base64.b64encode (hashlib.sha1 $ @key.encode 'ascii' + GUID).digest!).decode 'ascii'
+      chk = base64.b64decode val.strip!
+      chk != (hashlib.sha1 $ key + GUID).digest! =>
+        raise $ ConnectionError 'key check error'
+
+  WebSocket rd wr

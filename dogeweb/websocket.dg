@@ -181,10 +181,10 @@ ContextAware = subclass object where
   #: websocket_pair :: (WebSocket WebSocker -> coroutine a) -> Response
   #:
   websocket_pair = handler ~> @websocket $ io ->
-    syn  = getattr @app '_ws_syn'  None
-    ack  = getattr @app '_ws_ack'  None
-    fin  = getattr @app '_ws_fin'  None
-    pair = getattr @app '_ws_pair' None
+    syn  = @app.__dict__.pop '_ws_syn'  None
+    ack  = @app.__dict__.pop '_ws_ack'  None
+    fin  = @app.__dict__.pop '_ws_fin'  None
+    pair = @app.__dict__.pop '_ws_pair' None
     pair is None =>
       # In short, the algorithm is this:
       # 0. Publish our connection.
@@ -203,10 +203,13 @@ ContextAware = subclass object where
             not syn.done! => syn.set_result None
             not ack.done! => ack.set_result None
             not fin.done! => fin.set_result None
-          @app.~_ws_pair
-          @app.~_ws_syn
-          @app.~_ws_ack
-          @app.~_ws_fin
+          except
+            err =>
+              @app.~_ws_pair
+              @app.~_ws_syn
+              @app.~_ws_ack
+              @app.~_ws_fin
+            err :: AttributeError =>
           # 2. Make sure nothing attempts to read from the socket.
           read.cancel!
           except err => yield from read

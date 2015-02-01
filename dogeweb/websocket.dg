@@ -197,48 +197,43 @@ endpoint = handler -> route.wraps handler $ **: k ~>
 #: aggregate :: int (Request WebSocket... -> coroutine a) -> (Request -> coroutine Response)
 #:
 aggregate = n handler ->
-  task  = None
-  event = None
-  conns = None
-  end   = None
+  # Ok, so differentiating between endpoints is hard. I give up.
+  # We'll just assume "same path = same endpoint".
+  datamap = dict!
 
   endpoint $ route.wraps handler $ __io **: k ~>
-    upd  = event  # We're gonna need these later, but they might get set to `None`
-    data = conns  # by that point.
-    stop = end
     # So the algorithm is this: we spawn a task that monitors a set of connections.
     # If its size reaches 0, the task exits. If it reaches `n`, the task calls
     # the handler. Meanwhile, the actual request-handling tasks add their connections
     # to the set, then wait until either the task exits or the connection is closed,
     # then remove their connection from the set. Simple.
+    task, conns, event, stop = datamap.get @fullpath (None, None, None, None)
     task is None =>
-      end   := stop = asyncio.Event loop: @loop
-      event := upd  = asyncio.Event loop: @loop
-      conns := data = set!
-      task  := asyncio.async loop: @loop
+      conns = set!
+      event = asyncio.Event loop: @loop
+      stop  = asyncio.Event loop: @loop
+      task  = asyncio.async loop: @loop
         where except
-          err     => while 0 < len data < n => yield from upd.wait!, upd.clear!
+          err     => while 0 < len conns < n => yield from event.wait!, event.clear!
           finally =>
-            end   := None
-            event := None
-            conns := None
-            task  := None
+            datamap.pop @fullpath None
             except
-              inner => not err and data => yield from $ handler self data **: k
+              inner => not err and conns => yield from $ handler self conns **: k
               inner :: ConnectionError        =>
               inner :: ConnectionResetError   =>
               inner :: asyncio.CancelledError =>
               finally => stop.set!
+      datamap !! @fullpath = task, conns, event, stop
 
-    data.add __io
-    upd.set!
+    conns.add __io
+    event.set!
     except
       _ =>
         yield from stop.wait!
         yield from $ __io.close 1001
       finally =>
-        data.remove __io
-        upd.set!
+        conns.remove __io
+        event.set!
 
 
 #: Start a client-side WebSocket connection.

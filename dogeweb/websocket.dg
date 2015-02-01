@@ -207,9 +207,9 @@ aggregate = n handler ->
     data = conns  # by that point.
     stop = end
     # So the algorithm is this: we spawn a task that monitors a set of connections.
-    # If its size reaches 0, the task exists. If it reaches `n`, the task calls
+    # If its size reaches 0, the task exits. If it reaches `n`, the task calls
     # the handler. Meanwhile, the actual request-handling tasks add their connections
-    # to the set, then wait until either the task exists or the connection is closed,
+    # to the set, then wait until either the task exits or the connection is closed,
     # then remove their connection from the set. Simple.
     task is None =>
       end   := stop = asyncio.Event loop: @loop

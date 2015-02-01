@@ -174,64 +174,51 @@ ContextAware = subclass object where
          err :: Exception => False) => @abort 400 'WebSocket handshake error.'
     Response handler key
 
-  #: Create a pair of WebSocket stream. The first stream is this request; the second
-  #: is the next to connect to the same endpoint. Only the first handler will get
-  #: to manipulate these streams; the other will wait until it's done, then abort.
+  #: Create `n` WebSocket streams. The first stream is this request; the rest are
+  #: those that connect to the same endpoint directly after this client. Only the first
+  #: handler will get to manipulate these streams; the others will wait, then abort.
+  #: The identifier is used to unambiguously differentiate between endpoints.
   #:
-  #: websocket_pair :: (WebSocket WebSocker -> coroutine a) -> Response
+  #: websockets :: int str (WebSocket... -> coroutine a) -> Response
   #:
-  websocket_pair = handler ~> @websocket $ io ->
-    syn  = @app.__dict__.pop '_ws_syn'  None
-    ack  = @app.__dict__.pop '_ws_ack'  None
-    fin  = @app.__dict__.pop '_ws_fin'  None
-    pair = @app.__dict__.pop '_ws_pair' None
-    pair is None =>
-      # In short, the algorithm is this:
-      # 0. Publish our connection.
-      @app._ws_pair = io
-      @app._ws_syn  = syn = asyncio.Future loop: @loop
-      @app._ws_ack  = ack = asyncio.Future loop: @loop
-      @app._ws_fin  = fin = asyncio.Future loop: @loop
-      read = asyncio.async loop: @loop $ iter io
-      # 1. Block until SYN. The other connection will emit it upon grabbing our socket.
-      done, _ = except
-        err     => yield from $ asyncio.wait (read, syn) loop: @loop return_when: asyncio.FIRST_COMPLETED
-        finally =>
-          # 1.5. If something appears in the socket in the meantime (or some shit happens),
-          #      abort.
-          read.done! or err =>
-            not syn.done! => syn.set_result None
-            not ack.done! => ack.set_result None
-            not fin.done! => fin.set_result None
-          except
-            err =>
-              @app.~_ws_pair
-              @app.~_ws_syn
-              @app.~_ws_ack
-              @app.~_ws_fin
-            err :: AttributeError =>
-          # 2. Make sure nothing attempts to read from the socket.
-          read.cancel!
-          except err => yield from read
-                 err :: asyncio.CancelledError =>
-
-      not $ read in done =>
-        # 3. Emit ACK. This signals that our socket is free to read from.
-        ack.set_result None
-        # 4. Block until FIN, ignore the socket. The other connection will handle everything.
-        except _       => yield from fin
-               finally => not fin.done! => fin.set_result None
-      # 5. Close the connection.
+  websockets = n endpoint handler _sync: dict! ~> @websocket $ io ->
+    (@app, endpoint) in _sync =>
+      fin = asyncio.Future loop: @loop
+      syn = _sync.pop (@app, endpoint)
+      syn.set_result (io, fin)
+      yield from fin
       yield from $ io.close 0
 
-    # On the other side of things: 1. emit SYN.
-    syn.set_result None
-    # 2. Wait until ACK. The other side will finalize it if something happens,
-    #    so no `finally` this time.
-    yield from ack
-    # 3. Do stuff, then emit FIN when done.
-    except _       => yield from $ handler io pair
-           finally => not fin.done! => fin.set_result None
+    socks = [io,]
+    abort = []
+
+    read = asyncio.async loop: @loop
+      # NOTE: this client should NOT send anything before all websockets are connected.
+      # TODO: find a better way to detect premature disconnects. `@reader._eof` does not
+      #       seem to get set on a disconnect.
+      # TODO: a better algorithm that would automatically drop disconnected clients
+      #       and wait for `n` *connected* websockets.
+      where except
+        _       => yield from (@reader._waiter = @reader._create_waiter 'read')
+        finally => @reader._waiter = None
+
+    except
+      _ =>
+        except
+          _ => for _ in (1..n) =>
+            sync = _sync !! (@app, endpoint) = asyncio.Future loop: @loop
+            wait = read, sync
+            done, _ = yield from $ asyncio.wait wait loop: @loop return_when: asyncio.FIRST_COMPLETED
+            read in done => raise $ asyncio.CancelledError
+            sock, fin = yield from sync
+            socks.append sock
+            abort.append fin
+          finally =>
+            _sync.pop (@app, endpoint) None
+            except err => read.cancel!, yield from read
+                   err :: asyncio.CancelledError =>
+        yield from $ handler *: socks
+      finally => for waiter in abort => not waiter.done! => waiter.set_result None
 
   #: Read frames from multiple websockets at once, return a (websocket, frame) pair
   #: every time a frame is received.

@@ -4,6 +4,7 @@ import '/random'
 import '/hashlib'
 import '/itertools'
 
+import 'route'
 import 'response'
 
 
@@ -98,7 +99,7 @@ TextMessage = subclass Message str   where
 
 
 WebSocket = subclass object where
-  __init__ = self @reader @writer ->
+  __init__ = self @loop @reader @writer ->
   __iter__ = self -> while True =>
     msg = except
       err => yield from $ parse @reader
@@ -127,6 +128,22 @@ WebSocket = subclass object where
            err :: ConnectionError =>
     raise $ asyncio.CancelledError 'closed from this side'
 
+  #: Read frames from multiple websockets at once, return a (websocket, frame) pair
+  #: every time a frame is received.
+  #:
+  #: mux :: WebSocket... -> coroutine (WebSocket, Message)
+  #:
+  mux = *: (socks:(self, *_)) ->
+    socks = dict (where for s in socks => yield (asyncio.async loop: @loop $ iter s, s))
+
+    PseudoCoroutine = subclass object where __iter__ = _ ->
+      done, _ = yield from $ asyncio.wait socks loop: @loop return_when: asyncio.FIRST_COMPLETED
+      done =>
+        sock = socks.pop $ fst done
+        socks !! asyncio.async loop: @loop (iter sock) = sock
+        sock, yield from $ fst done
+    PseudoCoroutine!
+
 
 Response = subclass response.Response where
   #: A WebSocket handshake `Response`.
@@ -134,7 +151,7 @@ Response = subclass response.Response where
   #: key     :: str -- `Sec-WebSocket-Key` of the request.
   #: handler :: Reader Writer -> coroutine a
   #:
-  __init__ = handler @key ~>
+  __init__ = handler @key @req @kwargs ~>
     @handler = asyncio.coroutine handler
     response.Response.__init__ self 101 dict! b''
 
@@ -152,90 +169,76 @@ Response = subclass response.Response where
   #:
   #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  communicate = reader writer ~> @handler $ WebSocket reader writer
+  communicate = reader writer ~> @handler @req **: @kwargs $ WebSocket @req.loop reader writer
 
 
-ContextAware = subclass object where
-  #: Create a WebSocket from this request.
-  #:
-  #: websocket :: (WebSocket -> coroutine a) -> Response
-  #:
-  websocket = handler ~>
-    if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')
-       @headers.get 'Upgrade'    !=? 'websocket' => @abort 400 'This is a websocket node.'
-       @headers.get 'Connection' !=? 'upgrade'   => @abort 400 '`Connection: upgrade`?'
+#: Create a request handler that initiates a WebSocket connection
+#:
+#: endpoint :: (Request WebSocket -> coroutine a) -> (Request -> coroutine Response)
+#:
+endpoint = handler -> route.wraps handler $ **: k ~>
+  if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')
+     @headers.get 'Upgrade'    !=? 'websocket' => @abort 400 'This is a websocket node.'
+     @headers.get 'Connection' !=? 'upgrade'   => @abort 400 '`Connection: upgrade`?'
 
-    ver = @headers.get 'Sec-WebSocket-Version'
-    key = @headers.get 'Sec-WebSocket-Key'
+  ver = @headers.get 'Sec-WebSocket-Version'
+  key = @headers.get 'Sec-WebSocket-Key'
 
-    if not $ ver == '13' => @abort 400 'Unsupported WebSocket version.'
-       not $ (except
-         err => len (base64.b64decode key) == 16
-         err :: Exception => False) => @abort 400 'WebSocket handshake error.'
-    Response handler key
+  if not $ ver == '13' => @abort 400 'Unsupported WebSocket version.'
+     not $ (except
+       err => len (base64.b64decode key) == 16
+       err :: Exception => False) => @abort 400 'WebSocket handshake error.'
+  Response handler key self k
 
-  #: Create `n` WebSocket streams. The first stream is this request; the rest are
-  #: those that connect to the same endpoint directly after this client. Only the first
-  #: handler will get to manipulate these streams; the others will wait, then abort.
-  #: The identifier is used to unambiguously differentiate between endpoints.
-  #:
-  #: websockets :: int str (WebSocket... -> coroutine a) -> Response
-  #:
-  websockets = n endpoint handler _sync: dict! ~> @websocket $ io ->
-    (@app, endpoint) in _sync =>
-      fin = asyncio.Future loop: @loop
-      syn = _sync.pop (@app, endpoint)
-      syn.set_result (io, fin)
-      yield from fin
-      yield from $ io.close 0
 
-    socks = [io,]
-    abort = []
+#: Do the same thing as `endpoint`, but with multiple connections.
+#: The handler is called once `n` connections are available.
+#:
+#: aggregate :: int (Request WebSocket... -> coroutine a) -> (Request -> coroutine Response)
+#:
+aggregate = n handler ->
+  task  = None
+  event = None
+  conns = None
+  end   = None
 
-    read = asyncio.async loop: @loop
-      # NOTE: this client should NOT send anything before all websockets are connected.
-      # TODO: find a better way to detect premature disconnects. `@reader._eof` does not
-      #       seem to get set on a disconnect.
-      # TODO: a better algorithm that would automatically drop disconnected clients
-      #       and wait for `n` *connected* websockets.
-      where except
-        _       => yield from (@reader._waiter = @reader._create_waiter 'read')
-        finally => @reader._waiter = None
+  endpoint $ route.wraps handler $ __io **: k ~>
+    upd  = event  # We're gonna need these later, but they might get set to `None`
+    data = conns  # by that point.
+    stop = end
+    # So the algorithm is this: we spawn a task that monitors a set of connections.
+    # If its size reaches 0, the task exists. If it reaches `n`, the task calls
+    # the handler. Meanwhile, the actual request-handling tasks add their connections
+    # to the set, then wait until either the task exists or the connection is closed,
+    # then remove their connection from the set. Simple.
+    task is None =>
+      end   := stop = asyncio.Event loop: @loop
+      event := upd  = asyncio.Event loop: @loop
+      conns := data = set!
+      task  := asyncio.async loop: @loop
+        where except
+          err     => while 0 < len data < n => yield from upd.wait!, upd.clear!
+          finally =>
+            end   := None
+            event := None
+            conns := None
+            task  := None
+            except
+              inner => not err and data => yield from $ handler self data **: k
+              inner :: ConnectionError        =>
+              inner :: ConnectionResetError   =>
+              inner :: asyncio.CancelledError =>
+              finally => stop.set!
 
+    data.add __io
+    upd.set!
     except
       _ =>
-        except
-          _ => for _ in (1..n) =>
-            sync = _sync !! (@app, endpoint) = asyncio.Future loop: @loop
-            wait = read, sync
-            done, _ = yield from $ asyncio.wait wait loop: @loop return_when: asyncio.FIRST_COMPLETED
-            read in done => raise $ asyncio.CancelledError
-            sock, fin = yield from sync
-            socks.append sock
-            abort.append fin
-          finally =>
-            _sync.pop (@app, endpoint) None
-            except err => read.cancel!, yield from read
-                   err :: asyncio.CancelledError =>
-        yield from $ handler *: socks
-      finally => for waiter in abort => not waiter.done! => waiter.set_result None
-
-  #: Read frames from multiple websockets at once, return a (websocket, frame) pair
-  #: every time a frame is received.
-  #:
-  #: websocket_mux :: WebSocket... -> coroutine (WebSocket, Message)
-  #:
-  websocket_mux = *: socks ~>
-    socks = dict
-      where for s in socks => yield (asyncio.async loop: @loop $ iter s, s)
-
-    PseudoCoroutine = subclass object where __iter__ = _ ->
-      done, _ = yield from $ asyncio.wait socks loop: @loop return_when: asyncio.FIRST_COMPLETED
-      done =>
-        sock = socks.pop $ fst done
-        socks !! asyncio.async loop: @loop (iter sock) = sock
-        sock, yield from $ fst done
-    PseudoCoroutine!
+        yield from stop.wait!
+        yield from $ __io.close 1001
+      finally =>
+        data.remove __io
+        upd.set!
 
 
 #: Start a client-side WebSocket connection.
@@ -264,4 +267,4 @@ client = path rd wr ->
       chk != (hashlib.sha1 $ key + GUID).digest! =>
         raise $ ConnectionError 'key check error'
 
-  WebSocket rd wr
+  WebSocket rd._loop rd wr

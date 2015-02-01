@@ -18,9 +18,9 @@ app = dogeweb.app $ r.path
     # If the client does not want to change protocols, it will use `http`.
     'http', ~> @static attachment: False $ os.path.join (os.path.dirname __file__) 'websocket.html'
 
-    # `request.websocket handler` returns a `Response` that initiates
-    # a websocket handshake and calls into the handler when done.
-    'websocket', ~> @websocket $ ch ->
+    # `websocket.endpoint` adds a new argument to the handler, which is a
+    # WebSocket connection.
+    'websocket', dogeweb.websocket.endpoint $ ch ~>
       id = str $ next monotonic
       # `ch` is a simple queue. Five methods send stuff to the client:
       #   * `ping` requests a `pong`;

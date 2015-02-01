@@ -216,44 +216,7 @@ different calls to <code>url_for</code> would return:</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-method" id="websocket">
-  <div class="container section section-method">
-    <h2><span class='decl-name' id='websocket'>websocket</span> <span class='decl-arg'>handler</span></h2>
-    <p>Initiate a websocket handshake. May abort the request with 400; if not, returns a
-<a href="../response/#Response">response.Response</a> with appropriate headers. After these are sent,
-<code>handler</code> will be called with a WebSocket stream. See <a href="../websocket/#WebSocket">websocket.WebSocket</a>
-for details.</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-method" id="websockets">
-  <div class="container section section-method">
-    <h2><span class='decl-name' id='websockets'>websockets</span> <span class='decl-arg'>n</span> <span class='decl-arg'>identifier</span> <span class='decl-arg'>handler</span></h2>
-    <p>Wait until someone else connects to the same node, then call the handler with all <code>n</code>
-WebSocket streams at once. Returns an appropriate <a href="../response/#Response">response.Response</a>.
-See <a href="../websocket/#WebSocket">websocket.WebSocket</a> for details. Note that <code>identifier</code>
-should be unique for this endpoint.</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-note" id="24">
-  <div class="container section section-note">
-    <h2></h2>
-    <p>This method is really shitty and is subject to change.</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-method" id="websocket_mux">
-  <div class="container section section-method">
-    <h2><span class='decl-name' id='websocket_mux'>websocket_mux</span> <span class='decl-arg decl-arg-var'>streams</span></h2>
-    <p>Connect multiple <a href="../websocket/#WebSocket">websocket.WebSocket</a> streams into a
-read-only one that emits data from all of these streams. Instead of just <code>message</code>, it
-returns <code>(stream, message)</code> pairs when yielded from. The first websocket to disconnect
-aborts the whole connection.</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-note" id="26">
+<div class="section-wrapper section-wrapper-note" id="22">
   <div class="container section section-note">
     <h2></h2>
     <p>The following methods do not use any info from the request; they&rsquo;re shortcuts.</p>

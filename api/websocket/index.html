@@ -140,6 +140,35 @@ A coroutine.</p>
 
   </div>
 </div>
+<div class="section-wrapper section-wrapper-method" id="mux">
+  <div class="container section section-method">
+    <h2><span class='decl-name' id='mux'>mux</span> <span class='decl-arg decl-arg-var'>streams</span></h2>
+    <p>Connect multiple <a href="#WebSocket">WebSocket</a> streams into a
+read-only one that emits data from all of these streams. Instead of just <code>message</code>, it
+returns <code>(stream, message)</code> pairs when yielded from. The first websocket to disconnect
+cancels the task.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="endpoint">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='endpoint'>endpoint</span> <span class='decl-arg'>handler</span></h2>
+    <p>Create a request handler that establishes a WebSocket connection and calls into
+the handler, which should accept all the same arguments as a normal request handler
+would with the addition of one more positional argument, which is a <a href="#WebSocket">WebSocket</a>
+object.</p>
+
+  </div>
+</div>
+<div class="section-wrapper section-wrapper-function" id="aggregate">
+  <div class="container section section-function">
+    <h2><span class='decl-name' id='aggregate'>aggregate</span> <span class='decl-arg'>n</span> <span class='decl-arg'>handler</span></h2>
+    <p>Same as <a href="#endpoint">endpoint</a>, only instead of a single connection the handler should
+accept a set of <code>n</code> connections. The clients may have to wait until there are
+enough connections to call the handler.</p>
+
+  </div>
+</div>
 <div class="section-wrapper section-wrapper-function" id="client">
   <div class="container section section-function">
     <h2><span class='decl-name' id='client'>client</span> <span class='decl-arg'>path</span> <span class='decl-arg'>reader</span> <span class='decl-arg'>writer</span></h2>

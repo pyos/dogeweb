@@ -56,6 +56,25 @@
   This method also cancels the task that calls it, just to drive that point home.
   A coroutine.
 
+:method: mux *: streams
+  Connect multiple [WebSocket](#WebSocket) streams into a
+  read-only one that emits data from all of these streams. Instead of just `message`, it
+  returns `(stream, message)` pairs when yielded from. The first websocket to disconnect
+  cancels the task.
+
+
+:function: endpoint handler
+  Create a request handler that establishes a WebSocket connection and calls into
+  the handler, which should accept all the same arguments as a normal request handler
+  would with the addition of one more positional argument, which is a [WebSocket](#WebSocket)
+  object.
+
+
+:function: aggregate n handler
+  Same as [endpoint](#endpoint), only instead of a single connection the handler should
+  accept a set of `n` connections. The clients may have to wait until there are
+  enough connections to call the handler.
+
 
 :function: client path reader writer
   Create a client-side half of the WebSocket stream given a standard asyncio `StreamReader`

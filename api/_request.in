@@ -104,27 +104,6 @@
   url_for 'main.userinfo' name: 'spam' -> '/u/spam/'
   ```
 
-:method: websocket handler
-  Initiate a websocket handshake. May abort the request with 400; if not, returns a
-  [response.Response](../response/#Response) with appropriate headers. After these are sent,
-  `handler` will be called with a WebSocket stream. See [websocket.WebSocket](../websocket/#WebSocket)
-  for details.
-
-:method: websockets n identifier handler
-  Wait until someone else connects to the same node, then call the handler with all `n`
-  WebSocket streams at once. Returns an appropriate [response.Response](../response/#Response).
-  See [websocket.WebSocket](../websocket/#WebSocket) for details. Note that `identifier`
-  should be unique for this endpoint.
-
-:note:
-  This method is really shitty and is subject to change.
-
-:method: websocket_mux *: streams
-  Connect multiple [websocket.WebSocket](../websocket/#WebSocket) streams into a
-  read-only one that emits data from all of these streams. Instead of just `message`, it
-  returns `(stream, message)` pairs when yielded from. The first websocket to disconnect
-  aborts the whole connection.
-
 :note:
   The following methods do not use any info from the request; they're shortcuts.
 

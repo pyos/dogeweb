@@ -33,7 +33,7 @@ responsify = asyncio.coroutine $ smth -> if
 #: jsonify :: object -> Response
 #:
 jsonify = smth -> Response 200
-  ('Content-Type', 'application/json; charset=utf-8'),
+  ('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-cache, no-store, must-revalidate')
   (json.dumps smth).encode 'utf-8'
 
 

@@ -1,3 +1,4 @@
+import '/os'
 import '/socket'
 import '/logging'
 
@@ -15,11 +16,12 @@ SOCKET_KEEPALIVE = hasattr socket 'SO_KEEPALIVE'
 
 
 Server = subclass object where
-  __init__ = handler onerror: None timeout: 15 ~>
+  __init__ = handler onerror: None timeout: 15 static_dir: None ~>
     @timeout = timeout
     @handler = handler
     @onerror = onerror or @error
     @log     = logging.getLogger 'dogeweb'
+    @static  = static_dir
     None
 
   #: Synchronously start a server. See `asyncio.start_server` for arguments.
@@ -51,7 +53,11 @@ Server = subclass object where
 
         resp = except
           outer => except
-            inner => yield from $ response.responsify $ @handler req
+            inner => yield from $ response.responsify $ if
+              @static and req.path.startswith '/static/' =>
+                req.static $ os.path.join @static $
+                             os.path.normpath (req.path !! slice 7 None) !! slice 1 None
+              otherwise => @handler req
             inner :: Abort          => raise inner
             inner :: CancelledError => raise inner
             inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.

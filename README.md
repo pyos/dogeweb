@@ -62,3 +62,9 @@ loop = aiouv.EventLoop()
 
 app.run('0.0.0.0', 8000, loop=loop, http2=True)
 ```
+
+Or use gunicorn, again:
+
+```sh
+gunicorn -k dogeweb.gunicorn.WorkerNG helloworld:app
+```

@@ -41,22 +41,13 @@ Request2 = subclass request.Request where
 #: run :: typeof asyncio.create_server -> coroutine AbstractServer
 #:
 run = host: '' port: 0 family: socket.AF_INET sock: [] backlog: 100 ssl: None loop: None ~>
-  loop = loop or asyncio.get_event_loop!
-  loop :: aiouv.EventLoop or
-    raise $ RuntimeError 'libuv (aiouv) event loop required for H2O (HTTP/2.0)'
+  port != 0 =>
+    sock != [] => raise $ TypeError 'either `sock` or `host`+`port`, not both'
+    fd = socket.socket family
+    fd.bind (host, port)
+    sock = [fd,]
 
-  sock = list
-    where
-      for s in sock =>
-        s.setblocking False
-        yield s.detach!
-      port != 0 =>
-        fd = socket.socket family
-        fd.bind (host, port)
-        fd.setblocking False
-        yield fd.detach!
-
-  onrequest = io -> except
+  onrequest = io loop: None -> except
     err =>
       req = Request2 self @handler loop None None @log
         io.method
@@ -65,23 +56,16 @@ run = host: '' port: 0 family: socket.AF_INET sock: [] backlog: 100 ssl: None lo
         io.headers |> struct.Headers
         io.payload or b''
 
-      asyncio.async loop: loop
-        where except
-          err =>
-            resp = yield from $ @respond req
-            io.respond
-              resp.code
-              resp.headers.items! |> list
-              responses.get resp.code 'Unknown'
-              if req.ishead => b''
-                 otherwise  => b''.join resp.data
-          err :: CancelledError       => raise err
-          err :: ConnectionError      =>
-          err :: ConnectionResetError =>
-          err :: Exception => @log.fatal 'error in http handler' exc_info: True, raise CancelledError
-
+      resp = yield from $ @respond req
+      io.respond
+        resp.code
+        resp.headers.items! |> list
+        responses.get resp.code 'Unknown'
+        if req.ishead => b''
+           otherwise  => b''.join resp.data
+    err :: CancelledError       => raise err
     err :: ConnectionError      =>
     err :: ConnectionResetError =>
-    err :: Exception => @log.fatal 'error in request parser' exc_info: True
+    err :: Exception => @log.fatal 'error in http handler' exc_info: True, raise CancelledError
 
-  h2py.Server sock loop._loop onrequest ssl backlog
+  h2py.Server sock onrequest loop ssl backlog

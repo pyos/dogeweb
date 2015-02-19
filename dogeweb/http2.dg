@@ -1,0 +1,87 @@
+import '/os'
+import '/socket'
+import '/asyncio'
+import '/asyncio/CancelledError'
+
+except
+  err => import '/aiouv'
+  err :: ImportError => raise $ ImportError 'libuv (aiouv) event loop required for H2O (HTTP/2.0)'
+
+import '/h2py'
+import '/http/client/responses'
+
+import 'request'
+import 'struct'
+import 'util'
+
+
+Request2 = subclass request.Request where
+  #: Incoming request data, version 2.0. These fields have been made inaccessible::
+  #:
+  #: reader   :: undefined -- aborts the request on access
+  #: writer   :: undefined -- one cannot use the underlying streams for other purposes.
+  #:
+  reader = property
+    self   -> @abort 400 'Only available over HTTP/1.1'
+    self v ->
+
+  writer = property
+    self   -> @abort 400 'Only available over HTTP/1.1'
+    self v ->
+
+  #: Push a resource that the client hasn't asked for yet.
+  #:
+  #: push :: * ** -> undefined -- not implemented
+  #:
+  push = *: _ **: _ ~> raise NotImplementedError
+
+
+#: ???
+#:
+#: run :: typeof asyncio.create_server -> coroutine AbstractServer
+#:
+run = host: '' port: 0 family: socket.AF_INET sock: [] backlog: 100 ssl: None loop: None ~>
+  loop = loop or asyncio.get_event_loop!
+  loop :: aiouv.EventLoop or
+    raise $ RuntimeError 'libuv (aiouv) event loop required for H2O (HTTP/2.0)'
+
+  sock = list
+    where
+      for s in sock =>
+        s.setblocking False
+        yield s.detach!
+      port != 0 =>
+        fd = socket.socket family
+        fd.bind (host, port)
+        fd.setblocking False
+        yield fd.detach!
+
+  onrequest = io -> except
+    err =>
+      req = Request2 self @handler loop None None @log
+        io.method
+        io.path
+        io.version
+        io.headers |> struct.Headers
+        io.payload or b''
+
+      asyncio.async loop: loop
+        where except
+          err =>
+            resp = yield from $ @respond req
+            io.respond
+              resp.code
+              resp.headers.items! |> list
+              responses.get resp.code 'Unknown'
+              if req.ishead => b''
+                 otherwise  => b''.join resp.data
+          err :: CancelledError       => raise err
+          err :: ConnectionError      =>
+          err :: ConnectionResetError =>
+          err :: Exception => @log.fatal 'error in http handler' exc_info: True, raise CancelledError
+
+    err :: ConnectionError      =>
+    err :: ConnectionResetError =>
+    err :: Exception => @log.fatal 'error in request parser' exc_info: True
+
+  h2py.Server sock loop._loop onrequest ssl backlog

@@ -3,12 +3,7 @@ import '/socket'
 import '/asyncio'
 import '/asyncio/CancelledError'
 
-except
-  err => import '/aiouv'
-  err :: ImportError => raise $ ImportError 'libuv (aiouv) event loop required for H2O (HTTP/2.0)'
-
 import '/h2py'
-import '/http/client/responses'
 
 import 'request'
 import 'struct'
@@ -22,11 +17,11 @@ Request2 = subclass request.Request where
   #: writer   :: undefined -- one cannot use the underlying streams for other purposes.
   #:
   reader = property
-    self   -> @abort 400 'Only available over HTTP/1.1'
+    self   -> @abort 505 'Not available over HTTP/2'
     self v ->
 
   writer = property
-    self   -> @abort 400 'Only available over HTTP/1.1'
+    self   -> @abort 505 'Not available over HTTP/2'
     self v ->
 
   #: Push a resource that the client hasn't asked for yet.
@@ -54,15 +49,13 @@ run = host: '' port: 0 family: socket.AF_INET sock: [] backlog: 100 ssl: None lo
         io.path
         io.version
         io.headers |> struct.Headers
-        io.payload or b''
+        io.payload
 
       resp = yield from $ @respond req
-      io.respond
-        resp.code
-        resp.headers.items! |> list
-        responses.get resp.code 'Unknown'
-        if req.ishead => b''
-           otherwise  => b''.join resp.data
+      io.respond resp.code
+            list resp.headers.items!
+            if req.ishead => b''
+               otherwise  => b''.join resp.data
     err :: CancelledError       => raise err
     err :: ConnectionError      =>
     err :: ConnectionResetError =>

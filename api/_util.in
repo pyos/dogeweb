@@ -1,15 +1,6 @@
 :description: making asyncio even better
 
 
-:class: StreamReaderProtocol
-  Same as [asyncio.StreamReaderProtocol](https://docs.python.org/3/library/asyncio-stream.html#streamreaderprotocol), except the task
-  spawned in `connection_made` is stored in the `task` attribute and cancelled
-  in `connection_lost` instead of being left at the mercy of the garbage collector.
-
-  An [asyncio.StreamReader](https://docs.python.org/3/library/asyncio-stream.html#streamreader) is also created automatically;
-  no need to pass your own.
-
-
 :function: timelimit delay task loop
   Wait for a task or a coroutine to complete, but only if it manages to do so
   in the next `delay` seconds. If not, cancel it (and raise `asyncio.CancelledError`.)
@@ -18,10 +9,9 @@
 
 
 :function: start_server callback (...)
-  Same as [asyncio.start_server](https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server), but uses
-  [StreamReaderProtocol](#StreamReaderProtocol) instead of the asyncio-provided one.
-  Also, this function accepts a list of sockets as its `sock` argument
-  (unlike `asyncio.start_server`, which can only accept one socket.)
+  Same as [asyncio.start_server](https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server),
+  but accepts a list of sockets as its `sock` argument (unlike `asyncio.start_server`,
+  which can only serve on one socket.)
 
   This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).
 
@@ -29,6 +19,6 @@
 :function: create_server protocol_factory (...)
   Same as `asyncio.BaseEventLoop.create_server`, but can accept a list of sockets
   as its `sock` argument (unlike the default `create_server`, which can only
-  accept one socket.)
+  serve on one socket as well.)
 
   This function is a [coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine).

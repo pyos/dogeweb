@@ -32,19 +32,7 @@
     <div class="container">
       <h1>util - making asyncio even better</h1>
     </div>
-    <div class="section-wrapper section-wrapper-class" id="StreamReaderProtocol">
-  <div class="container section section-class">
-    <h2><span class='decl-name' id='StreamReaderProtocol'>StreamReaderProtocol</span></h2>
-    <p>Same as <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreaderprotocol">asyncio.StreamReaderProtocol</a>, except the task
-spawned in <code>connection_made</code> is stored in the <code>task</code> attribute and cancelled
-in <code>connection_lost</code> instead of being left at the mercy of the garbage collector.</p>
-
-<p>An <a href="https://docs.python.org/3/library/asyncio-stream.html#streamreader">asyncio.StreamReader</a> is also created automatically;
-no need to pass your own.</p>
-
-  </div>
-</div>
-<div class="section-wrapper section-wrapper-function" id="timelimit">
+    <div class="section-wrapper section-wrapper-function" id="timelimit">
   <div class="container section section-function">
     <h2><span class='decl-name' id='timelimit'>timelimit</span> <span class='decl-arg'>delay</span> <span class='decl-arg'>task</span> <span class='decl-arg'>loop</span></h2>
     <p>Wait for a task or a coroutine to complete, but only if it manages to do so
@@ -57,10 +45,9 @@ in the next <code>delay</code> seconds. If not, cancel it (and raise <code>async
 <div class="section-wrapper section-wrapper-function" id="start_server">
   <div class="container section section-function">
     <h2><span class='decl-name' id='start_server'>start_server</span> <span class='decl-arg'>callback</span> <span class='decl-arg'>...</span></h2>
-    <p>Same as <a href="https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server">asyncio.start_server</a>, but uses
-<a href="#StreamReaderProtocol">StreamReaderProtocol</a> instead of the asyncio-provided one.
-Also, this function accepts a list of sockets as its <code>sock</code> argument
-(unlike <code>asyncio.start_server</code>, which can only accept one socket.)</p>
+    <p>Same as <a href="https://docs.python.org/3/library/asyncio-stream.html#asyncio.start_server">asyncio.start_server</a>,
+but accepts a list of sockets as its <code>sock</code> argument (unlike <code>asyncio.start_server</code>,
+which can only serve on one socket.)</p>
 
 <p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
 
@@ -71,7 +58,7 @@ Also, this function accepts a list of sockets as its <code>sock</code> argument
     <h2><span class='decl-name' id='create_server'>create_server</span> <span class='decl-arg'>protocol_factory</span> <span class='decl-arg'>...</span></h2>
     <p>Same as <code>asyncio.BaseEventLoop.create_server</code>, but can accept a list of sockets
 as its <code>sock</code> argument (unlike the default <code>create_server</code>, which can only
-accept one socket.)</p>
+serve on one socket as well.)</p>
 
 <p>This function is a <a href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
 

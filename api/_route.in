@@ -4,6 +4,12 @@
 :note:
   This module is also available under the name `r`.
 
+  ```dg
+  import '/dogeweb/r'
+
+  handler = r.path ...
+  ```
+
 
 :global: WILDCARDRE
   A precompiled regular expression that matches wildcards in routes. By default,

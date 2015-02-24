@@ -9,11 +9,12 @@
   Create a complete application. `handler` is a function that accepts
   [request.Request](request/#Request)s and returns something that can be converted
   into a [response.Response](response/#Response). `onerror` is a function that
-  accepts a [request.Response](request/#Request) and a
-  [request.Abort](response/#Abort), but is otherwise similar to a handler.
+  accepts a [request.Request](request/#Request) and a
+  [response.Abort](response/#Abort), but is otherwise similar to a handler.
   `timeout` is how long to wait for requests, in seconds. The timer starts at the
   beginning of the connection or after sending a response over a `keep-alive`
-  connection, and ends just before handling the request.
+  connection, and ends just before handling the request. Unless a complete request
+  appears within that timeframe, the connection is aborted.
 
   Also available as `main.Server`.
 
@@ -26,6 +27,13 @@
   Start a development server. The arguments are the same as for
   [util.start_server](util/#start_server), except that `callback` is already provided.
   This method does not return unless you manually stop the event loop.
+
+
+:note:
+  If you have [libh2o](https://github.com/h2o/h2o) and [h2py](https://github.com/pyos/h2py)
+  installed, you can pass another parameter to this method: `http2: True`. As is
+  obvious from the name, it enables HTTP/2 (and makes HTTP/1.1 twice as fast,
+  because pure C.) Note that some clients may refuse HTTP/2 unless TLS is also enabled, though.
 
 
 :function: property handler

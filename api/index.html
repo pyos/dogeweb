@@ -44,11 +44,12 @@
     <p>Create a complete application. <code>handler</code> is a function that accepts
 <a href="request/#Request">request.Request</a>s and returns something that can be converted
 into a <a href="response/#Response">response.Response</a>. <code>onerror</code> is a function that
-accepts a <a href="request/#Request">request.Response</a> and a
-<a href="response/#Abort">request.Abort</a>, but is otherwise similar to a handler.
+accepts a <a href="request/#Request">request.Request</a> and a
+<a href="response/#Abort">response.Abort</a>, but is otherwise similar to a handler.
 <code>timeout</code> is how long to wait for requests, in seconds. The timer starts at the
 beginning of the connection or after sending a response over a <code>keep-alive</code>
-connection, and ends just before handling the request.</p>
+connection, and ends just before handling the request. Unless a complete request
+appears within that timeframe, the connection is aborted.</p>
 
 <p>Also available as <code>main.Server</code>.</p>
 
@@ -71,6 +72,16 @@ This method does not return unless you manually stop the event loop.</p>
 
   </div>
 </div>
+<div class="section-wrapper section-wrapper-note" id="5">
+  <div class="container section section-note">
+    <h2></h2>
+    <p>If you have <a href="https://github.com/h2o/h2o">libh2o</a> and <a href="https://github.com/pyos/h2py">h2py</a>
+installed, you can pass another parameter to this method: <code>http2: True</code>. As is
+obvious from the name, it enables HTTP/2 (and makes HTTP/1.1 twice as fast,
+because pure C.) Note that some clients may refuse HTTP/2 unless TLS is also enabled, though.</p>
+
+  </div>
+</div>
 <div class="section-wrapper section-wrapper-function" id="property">
   <div class="container section section-function">
     <h2><span class='decl-name' id='property'>property</span> <span class='decl-arg'>handler</span></h2>
@@ -87,7 +98,7 @@ a shorthand notation for handlers. Where you&rsquo;d normally write</p>
 
   </div>
 </div>
-<div class="section-wrapper section-wrapper-note" id="6">
+<div class="section-wrapper section-wrapper-note" id="7">
   <div class="container section section-note">
     <h2></h2>
     <p>This overshadows the <code>property</code> built-in, so use carefully.</p>

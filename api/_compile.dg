@@ -120,7 +120,7 @@ toc = mask -> TOCLIST.format $ ''.join $
 
 
 funcdecl = line ->
-  a, kw, da, dkw, va, vkw, add = dg.DEFNARGS $ dg.parse line
+  a, kw, da, dkw, va, vkw, add = dg.parse_defn_args $ dg.parse line
   da  => raise $ ValueError line
   dkw => raise $ ValueError line
   name = a.pop 0

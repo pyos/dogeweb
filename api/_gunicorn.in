@@ -5,7 +5,13 @@
   The only thing provided by this module. See
   [gunicorn configuration overview](http://docs.gunicorn.org/en/develop/configure.html#worker-class)
   for details.
-  
+
   ```bash
   gunicorn -k dogeweb.gunicorn.Worker module:app
   ```
+
+
+:class: WorkerNG
+  A version of [Worker](#Worker) that uses HTTP/2.
+  [libh2o](https://github.com/h2o/h2o) and [h2py](https://github.com/pyos/h2py)
+  still required for this to work. [aiouv](https://github.com/saghul/aiouv), too.

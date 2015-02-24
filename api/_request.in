@@ -12,7 +12,7 @@
   The HTTP method used by the client, e.g. `GET` or `POST`.
 
 :attribute: path
-  The path requested by the client. Relative to the current routine module
+  The path requested by the client. Relative to the current routing module
   (see [route.dir](../route/#dir).)
 
 :attribute: headers

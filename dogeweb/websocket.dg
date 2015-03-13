@@ -104,7 +104,7 @@ WebSocket = subclass object where
     msg = except
       err => yield from $ parse @reader
       err :: asyncio.IncompleteReadError => raise asyncio.CancelledError
-    if msg.is_ping  => yield from @pong
+    if msg.is_ping  => yield from $ @pong msg
        msg.is_close => raise $ asyncio.CancelledError msg
        otherwise    => raise $ StopIteration msg
 

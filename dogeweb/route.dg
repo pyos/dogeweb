@@ -180,7 +180,7 @@ host = _constrouter $ (req:_) **: k ~>
 #: Allow upgrading to different protocols.
 #: Uses HTTP `Upgrade` to choose between functions. `http` is the default.
 upgrade = _constrouter $ (req:_) **: k ~>
-  _, handler = @choices.get (req.headers.get 'Upgrade' 'http') (None, None)
+  _, handler = @choices.get (str.lower $ req.headers.get 'Upgrade' 'http') (None, None)
   if handler   => handler req **: k
      otherwise => req.abort 505
 
@@ -194,7 +194,7 @@ accept = _constrouter $ (req:_) **: k ~>
 #: Route on HTTP method. Method names are uppercase.
 #: `HEAD` is routed to `GET` unless redefined.
 method = _constrouter $ (req:_) **: k ~>
-  _, handler = @choices.get req.method (None, None) 
+  _, handler = @choices.get req.method (None, None)
   if handler   => handler req **: k
      otherwise => req.abort 405
 

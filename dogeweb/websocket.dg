@@ -108,23 +108,23 @@ WebSocket = subclass object where
        msg.is_close => raise $ asyncio.CancelledError msg
        otherwise    => raise $ StopIteration msg
 
-  _head    = code ln   ~> bytes (((code != CONT) << 7) | code, ln)
-  _frame   = code data ~>
+  _head    = code fin ln   ~> bytes ((fin << 7) | code, ln)
+  _frame   = code fin data ~>
     ln = len data
-    if ln <= 125   => @writer.write $ @_head code ln + data
-       ln <= SHORT => @writer.write $ @_head code 126 + ln.to_bytes 2 'big' + data
-       ln <= LONG  => @writer.write $ @_head code 127 + ln.to_bytes 8 'big' + data
+    if ln <= 125   => @writer.write $ @_head code 1 ln + data
+       ln <= SHORT => @writer.write $ @_head code 1 126 + ln.to_bytes 2 'big' + data
+       ln <= LONG  => @writer.write $ @_head code 1 127 + ln.to_bytes 8 'big' + data
        otherwise =>
-         yield from $ @_frame code $ data !! slice None LONG
-         yield from $ @_frame CONT $ data !! slice LONG None
+         yield from $ @_frame code 0 $ data !! slice None LONG
+         yield from $ @_frame CONT 1 $ data !! slice LONG None
     yield from @writer.drain!
 
-  ping  = data ~> @_frame PING data
-  pong  = data ~> @_frame PONG data
-  data  = data ~> @_frame DATA data
-  text  = data ~> @_frame TEXT $ data.encode 'utf-8'
+  ping  = data ~> @_frame PING 1 data
+  pong  = data ~> @_frame PONG 1 data
+  data  = data ~> @_frame DATA 1 data
+  text  = data ~> @_frame TEXT 1 $ data.encode 'utf-8'
   close = code: 1000 data: b'' ~>
-    except err => yield from $ @_frame CLOSE $ code.to_bytes 2 'big' + data
+    except err => yield from $ @_frame CLOSE 1 $ code.to_bytes 2 'big' + data
            err :: ConnectionError =>
     raise $ asyncio.CancelledError 'closed from this side'
 

@@ -1,6 +1,7 @@
 import '/asyncio'
 import '/base64'
 import '/random'
+import '/struct'
 import '/hashlib'
 import '/itertools'
 
@@ -99,7 +100,7 @@ TextMessage = subclass Message str   where
 
 
 WebSocket = subclass object where
-  __init__ = self @loop @reader @writer ->
+  __init__ = self @loop @reader @writer @client ->
   __iter__ = self -> while True =>
     msg = except
       err => yield from $ parse @reader
@@ -108,23 +109,26 @@ WebSocket = subclass object where
        msg.is_close => raise $ asyncio.CancelledError msg
        otherwise    => raise $ StopIteration msg
 
-  _head    = code fin ln   ~> bytes ((fin << 7) | code, ln)
-  _frame   = code fin data ~>
-    ln = len data
-    if ln <= 125   => @writer.write $ @_head code 1 ln + data
-       ln <= SHORT => @writer.write $ @_head code 1 126 + ln.to_bytes 2 'big' + data
-       ln <= LONG  => @writer.write $ @_head code 1 127 + ln.to_bytes 8 'big' + data
-       otherwise =>
-         yield from $ @_frame code 0 $ data !! slice None LONG
-         yield from $ @_frame CONT 1 $ data !! slice LONG None
-    yield from @writer.drain!
+  _frame = code fin data ~>
+    ln   = len data
+    fin  = bool fin     << 7
+    mask = bool @client << 7
+    @writer.write $ if ln <= 125   => struct.pack '!BB'  (fin | code) (mask | ln)
+                       ln <= SHORT => struct.pack '!BBH' (fin | code) (mask | 126) ln
+                       ln <= LONG  => struct.pack '!BBQ' (fin | code) (mask | 127) ln
+                       otherwise   => raise $ ValueError 'frame too long (>= 4 GiB)'
+    mask => mask = random.getrandbits 32 |>.to_bytes 4 'big'
+    @writer.write $ if
+      mask      => mask + bytes (map (^) data $ itertools.cycle mask)
+      otherwise => data
+    @writer.drain!
 
-  ping  = data ~> @_frame PING 1 data
-  pong  = data ~> @_frame PONG 1 data
-  data  = data ~> @_frame DATA 1 data
-  text  = data ~> @_frame TEXT 1 $ data.encode 'utf-8'
-  close = code: 1000 data: b'' ~>
-    except err => yield from $ @_frame CLOSE 1 $ code.to_bytes 2 'big' + data
+  ping  = data ~> @_frame PING True data
+  pong  = data ~> @_frame PONG True data
+  data  = data ~> @_frame DATA True data
+  text  = data ~> @_frame TEXT True $ data.encode 'utf-8'
+  close = code: 1000 data: b'' mask: False ~>
+    except err => yield from $ @_frame CLOSE True $ code.to_bytes 2 'big' + data
            err :: ConnectionError =>
     raise $ asyncio.CancelledError 'closed from this side'
 
@@ -169,7 +173,7 @@ Response = subclass response.Response where
   #:
   #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  communicate = reader writer ~> @handler @req **: @kwargs $ WebSocket @req.loop reader writer
+  communicate = reader writer ~> @handler @req **: @kwargs $ WebSocket @req.loop reader writer False
 
 
 #: Create a request handler that initiates a WebSocket connection
@@ -262,4 +266,4 @@ client = path rd wr ->
       chk != (hashlib.sha1 $ key + GUID).digest! =>
         raise $ ConnectionError 'key check error'
 
-  WebSocket rd._loop rd wr
+  WebSocket rd._loop rd wr True

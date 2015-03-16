@@ -165,16 +165,14 @@ host = _constrouter $ (req:_) **: k ~>
   #   keyword argument names. Since Python does not allow patterns as arguments,
   #   it will be named `<pattern:0>` by dg.
   host = req.headers.get 'Host' ''
-  while True =>
+  func = None
+  while func is None =>
     domain, _, _ = host.rpartition ':'
-    if host   in @choices => result = (@choices !! host   !! 1)   req **: k
-       domain in @choices => result = (@choices !! domain !! 1) req **: k
+    if host   in @choices => func = @choices !! host   !! 1
+       domain in @choices => func = @choices !! domain !! 1
        not host           => req.abort 404
-       otherwise          =>
-         _, _, host = host.partition '.'
-         continue!
-    break!
-  result
+       otherwise          => _, _, host = host.partition '.'
+  func req **: k
 
 
 #: Allow upgrading to different protocols.

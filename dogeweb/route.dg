@@ -2,6 +2,8 @@ import '/re'
 import '/functools'
 import '/collections'
 
+import 'http/unquote'
+
 
 #: Syntax for wildcards.
 #:
@@ -82,7 +84,7 @@ wraps = f g ->
 #: _issameas :: str (tuple str, tuple (str -> a), Regex) -> Maybe (int, iter (str, a))
 #:
 _issameas = path (d, ns, fs, regex) -> (m = regex.match path) and (d or m.end! == len path) => m.end! - 1,
-  where for (name, f, value) in zip ns fs m.groups! => yield (name, f value)
+  where for (name, f, value) in zip ns fs m.groups! => yield (name, f $ unquote value)
 
 
 #: Redirect to the same path, but with a slash appended.

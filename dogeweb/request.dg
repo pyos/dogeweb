@@ -39,7 +39,6 @@ Request = subclass route.ContextAware where
   #:
   __init__ = @app @handler @loop @reader @writer @log @method path @version @headers @payload ~>
     @path, _, @query = path.partition '?'
-    @path = http.unquote @path
     @ishead = @method == 'HEAD'
     @ishead => @method = 'GET'
     (super Request self).__init__!

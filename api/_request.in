@@ -49,7 +49,45 @@
   of 0.
 
 :attribute: cookies
-  All cookies from this request as a dict.
+  All cookies from this request as a semi-immutable `dict`.
+
+:attrmethod: set name value (Optional maxage) (Optional path) (Optional httponly)
+  Create a new cookie. Note that you still have to create a `Response` with
+  the appropriate header; this method returns a singleton list containing that header.
+
+  ```dg
+  handler = req ->
+    headers  = req.cookies.set 'visited' 'true'
+    headers += req.cookies.set 'last_ts' $ str time!
+    # ...
+    200, headers, more_headers, ..., '<!doctype html><html>...</html>'
+  ```
+
+  By default, a cookie is module-local, i.e. path-restricted to the current
+  routing module and its submodules (see [route.dir](../route/#dir)). Override
+  `path` if that's not desired.
+
+  ```dg
+  headers  = req.cookies.set 'visited_module' 'yes'
+  headers += req.cookies.set 'visited_site' 'true' path: '/'
+  ```
+
+  `maxage` is the expiration time in seconds; 0 (the default) means
+  the cookie is valid until the browser window is closed.
+
+:note:
+  When reading cookies, local ones have priority over global ones. If the above code
+  used the same name for both cookies, requests to the same module would always
+  contain `yes` while requests to other modules would have that cookie set to `true`.
+
+:attrmethod: del name (Optional path)
+  Remove a cookie (by setting its `max-age` to 0.) The path should match
+  the one used when creating that cookie *exactly*. By default, this removes
+  a cookie belonging to the current module. Just like `set`, returns
+  a singleton list with a header to pass to the client.
+
+:note:
+  `del` is a reserved name in Python, so there's an alias available, `rem`.
 
 :attribute: args
   Form fields passed through the URL (the part after `?`) as a [struct.MultiDict](../struct/#MultiDict).

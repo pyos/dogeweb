@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 for f in *.in; do
   d="${f%.*}"
   d="${d#_}"
@@ -13,5 +13,5 @@ for f in *.in; do
   fi
 
   echo "$f -> $t"
-  python -m dg _compile.dg "$x" "$d" < "$f" > "$t"
+  python3 -m dg _compile.dg "$x" "$d" < "$f" > "$t"
 done

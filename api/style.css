@@ -37,7 +37,7 @@ code, pre {
   margin: 10px 0;
 }
 
-.section-method > h2, .section-attribute > h2 {
+.section-method > h2, .section-attribute > h2, .section-attrmethod > h2 {
   font-size: 20px;
 }
 

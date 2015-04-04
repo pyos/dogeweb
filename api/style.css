@@ -65,8 +65,13 @@ code, pre {
   content: "attr ";
 }
 
-.section-method > h2:before {
+.section-method > h2:before,
+.section-attrmethod > h2:before {
   content: "method ";
+}
+
+.section-attrmethod {
+  padding-left: 80px;
 }
 
 .decl-arg {

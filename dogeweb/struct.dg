@@ -1,4 +1,5 @@
 import '/asyncio'
+import '/urllib/parse/quote'
 
 
 MultiDict = subclass dict where
@@ -141,3 +142,47 @@ File = subclass object where
   save = asyncio.coroutine $ target ~>
     # TODO make this async.
     with fd = open target 'wb' => fd.write @data
+
+
+Cookies = subclass dict where
+  __init__ = @request data ~>
+    dict.__init__ self
+    # There's an ambiguity if multiple cookies with the same name exist
+    # (e.g. they were created with different path.) The RFC states that
+    # clients should send them in reverse order by path length (i.e.
+    # local cookies first, global cookies second), but that servers
+    # should not rely on the order. What.
+    for (k, v) in data => @setdefault k v
+    None
+
+  __setitem__ = k v ~> raise $ TypeError 'use `Cookies.set` instead'
+  __delitem__ = k   ~> raise $ TypeError 'use `Cookies.del` instead'
+  pop = *: _ **: _ ~> raise $ TypeError 'use `Cookies.get` followed by `Cookies.del` instead'
+
+  #: Create a new cookie, return the headers that should be sent to the client
+  #: to update its state:
+  #:
+  #:   h = request.cookies.set 'name' 'value'
+  #:   ...
+  #:   200, h, other_headers, 'OK'
+  #:
+  #: By default, all cookies are only available to this module and its submodules;
+  #: override `path` for different behavior. Expiration time is in seconds.
+  #:
+  #: set :: str str (Optional int) (Optional str) (Optional bool) (Optional str) -> object
+  #:
+  set = name value maxage: 0 path: None httponly: True encoding: 'utf-8' ~>
+    dict.__setitem__ self name value
+    val = '%s=%s; Path=%s' % (quote name '' encoding, quote value '' encoding, path or @request.parent)
+    maxage   => val += '; Max-Age=%s' % maxage
+    httponly => val += '; HttpOnly'
+    [('Set-Cookie', val)]
+
+  #: Clear a cookie. Should be used in the same way as `set`.
+  #: Equivalent to setting a past expiration date.
+  #:
+  #: del :: str (Optional str) (Optional str) -> object
+  #:
+  del = rem = name path: None encoding: 'utf-8' ~>
+    dict.pop self name
+    [('Set-Cookie', '%s=_; Max-Age=0; Path=%s' % (quote name '' encoding, path or @request.parent))]

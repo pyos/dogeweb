@@ -184,5 +184,5 @@ Cookies = subclass dict where
   #: del :: str (Optional str) (Optional str) -> object
   #:
   del = rem = name path: None encoding: 'utf-8' ~>
-    dict.pop self name
+    dict.pop self name None
     [('Set-Cookie', '%s=_; Max-Age=0; Path=%s' % (quote name '' encoding, path or @request.parent))]

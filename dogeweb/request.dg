@@ -9,10 +9,11 @@ import 'struct'
 #:
 #: property :: (Either (object -> a) (builtins.property a)) -> builtins.property a
 #:
-property = func (cache:undef): object! builtin_property: property ->
+property = func builtin_property: property ->
+  name = func.__name__
   builtin_property $ route.wraps func $ self -> if
-    cache is undef => cache := func self
-    otherwise      => cache
+    name in @__dict__ => @__dict__ !! name
+    otherwise         => @__dict__ !! name := func self
 
 
 Request = subclass route.ContextAware where
@@ -65,7 +66,7 @@ Request = subclass route.ContextAware where
   #:
   #: form :: struct.MultiDict str object
   #:
-  form = ~> struct.MultiDict $ http.body @payload @headers or list!
+  form = ~> struct.MultiDict $ http.body @payload @headers or []
 
   #: Same as `form`, but only contains files.
   #:

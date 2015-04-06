@@ -7,7 +7,7 @@ MultiDict = subclass dict where
   #: It can be initialized either like a normal dict, except every value
   #: is wrapped in a singleton list.
   __init__ = init: () ~>
-    dict.__init__ self
+    @@__init__!
     @update init
     None
 
@@ -16,117 +16,104 @@ MultiDict = subclass dict where
   #:
   #: !! :: (MultiDict a b) a -> b
   #:
-  __getitem__ = k ~> dict.__getitem__ self k !! 0
+  __getitem__ = k ~> @@__getitem__ k !! 0
 
   #: Replace all existing values for a key with a given one.
   #:
   #: !!= :: (MultiDict a b) a b -> NoneType
   #:
-  __setitem__ = k v ~> dict.__setitem__ self k $ list' v
+  __setitem__ = k v ~> @@__setitem__ k $ list' v
 
   #: Add a new value to a key.
   #:
   #: add :: a b -> NoneType
   #:
-  add = k v ~> (dict.setdefault self k list!).append v
+  add = k v ~> (@@setdefault k []).append v
 
   #: Return the first value for a given key or a default if none exists.
   #:
   #: get :: a (Maybe b) -> Maybe b
   #:
-  get = k default: None ~>
-    ds = list' default
-    xs = dict.get self k ds or ds
-    xs !! 0
+  get = k default: None ~> (@@get k or [default]) !! 0
 
   #: Return the list of items fo a key. If that key does not exist,
   #: return an empty list.
   #:
   #: getall :: a -> [b]
   #:
-  getall = k ~> dict.get self k list!
+  getall = k ~> @@get k []
 
   #: Like `get`, but removes the item from the dict.
   #:
   #: pop :: a (Maybe b) -> Maybe b
   #:
-  pop = k default: None ~>
-    ds = list' default
-    xs = dict.get self k ds or ds
-    xs.pop 0
+  pop = k default: None ~> (@@get k or [default]).pop 0
 
   #: Like `getall`, but removes the list from the dict.
   #:
   #: popall :: a -> [b]
   #:
-  popall = k ~> dict.pop self k list!
+  popall = k ~> @@pop k []
 
-  #: Iterate over all keys/values in this dict. May yield the same key
-  #: multiple times.
+  #: Iterate over all keys/values in this dict. May yield the same key multiple times.
   #:
   #: keys   :: -> iter a
   #: items  :: -> iter (a, b)
   #: values :: -> iter b
   #:
   keys   = self -> for k in self => yield k
-  items  = self -> for (k, vs) in dict.items self => for v in vs => yield (k, v)
-  values = self -> for (k, vs) in dict.items self => for v in vs => yield v
+  items  = self -> for (k, vs) in @@items! => for v in vs => yield (k, v)
+  values = self -> for (k, vs) in @@items! => for v in vs => yield v
 
   #: Extend value lists with additional data.
   #:
   #: update :: (Either (dict a b) (iter (a, b))) -> NoneType
   #:
   update = init ~>
-    items = if
-      init :: dict => init.items!
-      otherwise    => init
-    for (k, v) in items => self.add k v
+    items = if init :: dict => init.items!
+               otherwise    => init
+    for (k, v) in items => @add k v
+    None
 
-  #: Replace existing values with those from another iterable.
+  #: Like `update`, but old values for updated keys are removed.
   #:
   #: replace :: (Either (dict a b) (iter (a, b))) -> NoneType
   #:
-  replace = init ~>
-    items = if
-      init :: dict => init.items!
-      otherwise    => init
-    for (k, v) in items => self !! k = v
+  replace = init ~> @@update $ MultiDict init
 
   #: Create a key with a given value iff it does not exist yet.
   #:
   #: setdefault :: a b -> [b]
   #:
-  setdefault = k v ~> self.get k or list' (self !! k = v)
+  setdefault = k v ~> @get k or [self !! k = v]
 
 
 Headers = subclass MultiDict where
-  __getitem__ = k      ~> MultiDict.__getitem__ self (@normalize k)
-  __delitem__ = k      ~> MultiDict.__delitem__ self (@normalize k)
-  __setitem__ = k v    ~> MultiDict.__setitem__ self (@normalize k) v
-  setdefault  = k v    ~> MultiDict.setdefault  self (@normalize k) v
-  add         = k v    ~> MultiDict.add         self (@normalize k) v
-  get         = k *: a ~> MultiDict.get         self (@normalize k) *: a
-  pop         = k *: a ~> MultiDict.pop         self (@normalize k) *: a
-  getall      = k      ~> MultiDict.getall      self (@normalize k)
-  popall      = k      ~> MultiDict.popall      self (@normalize k)
-  normalize = staticmethod str.lower
+  __getitem__ = k      ~> @@__getitem__ k.lower!
+  __delitem__ = k      ~> @@__delitem__ k.lower!
+  __setitem__ = k v    ~> @@__setitem__ k.lower! v
+  setdefault  = k v    ~> @@setdefault  k.lower! v
+  add         = k v    ~> @@add         k.lower! v
+  get         = k *: a ~> @@get         k.lower! *: a
+  pop         = k *: a ~> @@pop         k.lower! *: a
+  getall      = k      ~> @@getall      k.lower!
+  popall      = k      ~> @@popall      k.lower!
 
 
 Accept = subclass list where
-  __init__ = init: () ~>
-    list.__init__ self init
-    list.sort     self reverse: True key: snd
-    None
-
+  #: A container for `Accept-*` header values; basically a list of `(kind, quality)`
+  #: pairs reverse-sorted by quality with `!!` overriden to return the quality of the best
+  #: kind that matches a key.
+  __init__ = init: () ~> @@__init__ $ sorted init reverse: True key: snd
   __getitem__ = k   ~> next (where for (p, w) in self => @__matches__ k p => yield w) 0
   __matches__ = k p ~> k == p
 
 
 AcceptMIME = subclass Accept where
   __matches__ = k p ~>
-    kmaj, kmin, *_ = (k + '/').split '/'
-    pmaj, pmin, *_ = (p + '/').split '/'
-    pmaj in ('*', kmaj) and pmin in ('*', kmin)
+    kmaj, kmin, *_ = (k + '/').split '/'  # MIME types are `a/b`, where each part
+    pmaj, pmin, *_ = (p + '/').split '/'  # has to be matched separately.
+    pmaj in ('*', kmaj) and pmin in ('*', kmin)  # `*` matches anything.
 
 AcceptCharset  = subclass Accept where # TODO
 AcceptLanguage = subclass Accept where # TODO
@@ -134,19 +121,20 @@ AcceptEncoding = subclass Accept where # TODO
 
 
 File = subclass object where
-  __init__ = name data ~>
-    @name = name
-    @data = data
-    None
+  __init__ = @name @data ~>
 
-  save = asyncio.coroutine $ target ~>
-    # TODO make this async.
-    with fd = open target 'wb' => fd.write @data
+  #: Store the content of this file in a local filesystem.
+  #:
+  #: save :: str -> coroutine a
+  #:
+  save = asyncio.coroutine $ target ~> with fd = open target 'wb' => fd.write @data
+  # TODO make that async?
 
 
 Cookies = subclass dict where
-  __init__ = @request data ~>
-    dict.__init__ self
+  __init__ = request data ~>
+    @@__init__!
+    @path = request.parent
     # There's an ambiguity if multiple cookies with the same name exist
     # (e.g. they were created with different path.) The RFC states that
     # clients should send them in reverse order by path length (i.e.
@@ -157,7 +145,7 @@ Cookies = subclass dict where
 
   __setitem__ = k v ~> raise $ TypeError 'use `Cookies.set` instead'
   __delitem__ = k   ~> raise $ TypeError 'use `Cookies.del` instead'
-  pop = *: _ **: _ ~> raise $ TypeError 'use `Cookies.get` followed by `Cookies.del` instead'
+  pop  = *: _ **: _ ~> raise $ TypeError 'use `Cookies.get` followed by `Cookies.del` instead'
 
   #: Create a new cookie, return the headers that should be sent to the client
   #: to update its state:
@@ -169,11 +157,11 @@ Cookies = subclass dict where
   #: By default, all cookies are only available to this module and its submodules;
   #: override `path` for different behavior. Expiration time is in seconds.
   #:
-  #: set :: str str (Optional int) (Optional str) (Optional bool) (Optional str) -> object
+  #: set :: str str (Optional int) (Optional str) (Optional bool) (Optional str) -> [Header]
   #:
   set = name value maxage: 0 path: None httponly: True encoding: 'utf-8' ~>
-    dict.__setitem__ self name value
-    val = '%s=%s; Path=%s' % (quote name '' encoding, quote value '' encoding, path or @request.parent)
+    @@__setitem__ name value
+    val = '%s=%s; Path=%s' % (quote name '' encoding, quote value '' encoding, path or @path)
     maxage   => val += '; Max-Age=%s' % maxage
     httponly => val += '; HttpOnly'
     [('Set-Cookie', val)]
@@ -181,8 +169,8 @@ Cookies = subclass dict where
   #: Clear a cookie. Should be used in the same way as `set`.
   #: Equivalent to setting a past expiration date.
   #:
-  #: del :: str (Optional str) (Optional str) -> object
+  #: del :: str (Optional str) (Optional str) -> [Header]
   #:
   del = rem = name path: None encoding: 'utf-8' ~>
-    dict.pop self name None
-    [('Set-Cookie', '%s=_; Max-Age=0; Path=%s' % (quote name '' encoding, path or @request.parent))]
+    @@pop name None
+    [('Set-Cookie', '%s=_; Max-Age=0; Path=%s' % (quote name '' encoding, path or @path))]

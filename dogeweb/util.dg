@@ -6,24 +6,23 @@ StreamReaderProtocol = subclass asyncio.StreamReaderProtocol where
   #: Also, it always uses a standard `StreamReader`.
   #:
   #: callback :: StreamReader StreamWriter -> coroutine a
-  #: task     :: Maybe (Task a)
   #:
   __init__ = @callback loop: None ~>
     @task = None
-    (super StreamReaderProtocol self).__init__ loop: loop
+    @@__init__ loop: loop
       asyncio.StreamReader loop: loop
       r w -> (@task = asyncio.async loop: loop $ @callback r w)
 
   connection_lost = exc ~>
     @task => @task.cancel!
-    (super StreamReaderProtocol self).connection_lost exc
+    @@connection_lost exc
 
 
 #: `yield from` with a time limit.
 #:
 #: timelimit :: float (Either (coroutine a) (Future a)) (Optional EventLoop) -> coroutine a
 #:
-timelimit = delay task loop ->
+timelimit = delay task loop: None ->
   loop   = loop or asyncio.get_event_loop!
   task   = asyncio.async task loop: loop
   handle = loop.call_later delay task.cancel

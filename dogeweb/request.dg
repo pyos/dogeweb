@@ -5,37 +5,32 @@ import 'http'
 import 'struct'
 
 
-#: When a property is first accessed, cache the result of calling a function and return it.
+#: A version of `property` that caches its result on first access.
 #:
-#: _mcache :: (object -> a) -> property a
+#: property :: (Either (object -> a) (builtins.property a)) -> builtins.property a
 #:
-_mcache = func -> if
-  func :: property => _mcache func.fget
-  otherwise        =>
-    name = func.__name__
-    prop = ~> if
-      name in @__dict__ => @__dict__ !! name
-      otherwise         => @__dict__ !! name = func self
-    prop.fget.__name__   = func.__name__
-    prop.fget.__module__ = func.__module__
-    prop.fget.__doc__    = func.__doc__
-    prop
+property = func (cache:undef): object! builtin_property: property ->
+  builtin_property $ route.wraps func $ self -> if
+    cache is undef => cache := func self
+    otherwise      => cache
 
 
 Request = subclass route.ContextAware where
   #: Incoming request data.
   #:
-  #: version  :: str      -- the HTTP version this request was made with.
-  #: method   :: str      -- the HTTP request method (`GET`, `POST`, ...)
-  #: path     :: str      -- the requested path relative to the current routing module.
-  #: headers  :: Headers  -- additional HTTP headers as a dict-like object.
-  #: payload  :: bytes    -- the request body.
   #: app      :: Server   -- the instance of the application that handles this request.
   #: handler  :: Handler  -- the root handler of the application this request was received by.
   #: loop     :: EventLoop
+  #: reader   :: StreamReader -- streams to use after HTTP Upgrade.
+  #: writer   :: StreamWriter -- may not be available over HTTP 2.
   #: log      :: Logger
-  #: reader   :: StreamReader
-  #: writer   :: StreamWriter -- streams to use after HTTP Upgrade.
+  #: method   :: str        -- the HTTP request method (`GET`, `POST`, ...)
+  #: ishead   :: bool       -- whether this is actually `HEAD` (`method` is `GET` in that case)
+  #: version  :: (int, int) -- the HTTP version this request was made with.
+  #: path     :: str        -- the requested path relative to the current routing module.
+  #: query    :: str        -- the part of the path after `?`
+  #: headers  :: Headers    -- additional HTTP headers as a dict-like object.
+  #: payload  :: bytes      -- the request body.
   #:
   __init__ = @app @handler @loop @reader @writer @log @method path @version @headers @payload ~>
     @path, _, @query = path.partition '?'
@@ -47,20 +42,53 @@ Request = subclass route.ContextAware where
   #:
   #: accept :: { .mime :: Accept, .charset :: Accept, .language :: Accept, .encoding :: Accept }
   #:
-  accept = _mcache $ ~>
-    mime     = _mcache $ _ -> struct.AcceptMIME     $ http.accept $ @headers.get 'accept'
-    charset  = _mcache $ _ -> struct.AcceptCharset  $ http.accept $ @headers.get 'accept-charset'
-    language = _mcache $ _ -> struct.AcceptLanguage $ http.accept $ @headers.get 'accept-language'
-    encoding = _mcache $ _ -> struct.AcceptEncoding $ http.accept $ @headers.get 'accept-encoding'
-    (subclass object)!
+  accept = property $ subclass object where
+    __init__ = @_req ~>
+    mime     = ~> struct.AcceptMIME     $ http.accept $ @_req.headers.get 'accept'
+    charset  = ~> struct.AcceptCharset  $ http.accept $ @_req.headers.get 'accept-charset'
+    language = ~> struct.AcceptLanguage $ http.accept $ @_req.headers.get 'accept-language'
+    encoding = ~> struct.AcceptEncoding $ http.accept $ @_req.headers.get 'accept-encoding'
 
-  cookies = _mcache $ ~> struct.Cookies self $ http.cookies $ @headers.getall 'cookie'
-  args    = _mcache $ ~> struct.MultiDict $ http.query @query
-  form    = _mcache $ ~> struct.MultiDict $ http.body @payload @headers or list!
-  files   = _mcache $ ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @form.items!
-  isxhr   = _mcache $ ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
-  isjson  = _mcache $ ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'
-  address = _mcache $ ~> @headers.get 'x-forwarded-for' or
+  #: A `dict`-like object that contains HTTP cookies.
+  #:
+  #: cookies :: struct.Cookies
+  #:
+  cookies = ~> struct.Cookies self $ http.cookies $ @headers.getall 'cookie'
+
+  #: Parameters passed in the URL (as `?name=value&name=value&...`)
+  #:
+  #: args :: struct.MultiDict str str
+  #:
+  args = ~> struct.MultiDict $ http.query @query
+
+  #: Parameters passed in the request body.
+  #:
+  #: form :: struct.MultiDict str object
+  #:
+  form = ~> struct.MultiDict $ http.body @payload @headers or list!
+
+  #: Same as `form`, but only contains files.
+  #:
+  #: files :: struct.MultiDict str struct.File
+  #:
+  files = ~> struct.MultiDict $ filter ((k, v) -> v :: struct.File) @form.items!
+
+  #: Whether this request was made by a client-side script (XMLHttpRequest).
+  #:
+  #: isxhr :: bool
+  #:
+  isxhr = ~> (@headers.get 'x-requested-with' '').lower!.strip! == 'xmlhttprequest'
+
+  #: Whether this request would prefer data as JSON (useful for builting APIs).
+  #:
+  #: isjson :: bool
+  #:
+  isjson = ~> @accept.mime !! 'application/json' > @accept.mime !! 'text/html'
+
+  #: IP/UNIX/whatever address of the client.
+  #:
+  #: address :: Maybe str
+  address = ~> @headers.get 'x-forwarded-for' or
     @writer.transport.get_extra_info 'peername' (None, None) !! 0
 
   # These do not require anything from the `Request`, but it's nice

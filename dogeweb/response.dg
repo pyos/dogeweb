@@ -7,45 +7,22 @@ import 'http'
 import 'struct'
 
 
-#: Convert an arbitrary object into a response.
-#:
-#: Currently supported are strings and bytes (simple HTML responses in UTF-8), actual
-#: `Response`s, and `(code, [headers,] responsifyable)` tuples, as well as coroutines
-#: that return them.
-#:
-#: responsify :: object -> coroutine Response
-#:
-responsify = asyncio.coroutine $ smth -> if
-  smth :: Response => smth
-  smth :: bytes    => Response 200 () smth
-  smth :: str      => Response 200 () $ smth.encode 'utf-8'
-  smth :: tuple    =>
-    code, *headers, smth = smth
-    r = yield from $ responsify $ smth
-    r.code = code
-    exhaust $ map r.headers.replace headers
-    r
-  otherwise => yield from $ responsify $ yield from smth
-
-
-#: Create a json response. Unlike `json.dumps`, this specifies proper `Content-Type`.
-#:
-#: jsonify :: object -> Response
-#:
-jsonify = smth -> Response 200
-  ('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-cache, no-store, must-revalidate')
-  (json.dumps smth).encode 'utf-8'
-
-
 Abort = subclass Exception where
   #: The exception raised on HTTP errors.
   #:
-  #: ???
+  #: code        :: int -- which error.
+  #: description :: str -- why.
+  #: headers     :: struct.Headers -- these should be included in whatever the server
+  #:                               -- decides to send to the client.
   #:
   __init__ = @code @description: '' @headers: () ~>
     @headers = struct.Headers @headers
-    (super Abort self).__init__ @description
+    @@__init__ @description
 
+  #: Standardized name assigned to this error code (e.g. 400 == Bad Request).
+  #:
+  #: name :: str
+  #:
   name = ~> http.responses.get @code 'Unknown Error'
 
 
@@ -58,9 +35,9 @@ Response = subclass object where
     @headers.replace headers
     None
 
-  #: Headers that are required for all responses, such as `Content-Type` and `Content-Length`.
+  #: Headers that will be sent unless overriden when constructing a response.
   #:
-  #: defheaders :: dict str str
+  #: defheaders :: { convertable to struct.Headers }
   #:
   defheaders = ~> list'
     'Content-Type',   'text/html; charset=utf-8'
@@ -69,10 +46,22 @@ Response = subclass object where
     #      content-length could not be calculated.
 
   #: Talk to the client in some other protocol, if applicable.
+  #: Called after the response (probably 101 Continue) is sent.
   #:
   #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
   communicate = asyncio.coroutine $ reader writer ~> None
+
+
+JSONResponse = subclass Response where
+  #: Headers that will be sent unless overriden when constructing a response.
+  #:
+  #: defheaders :: { convertable to struct.Headers }
+  #:
+  defheaders = ~> list'
+    'Content-Type',  'application/json; charset=utf-8'
+    'Cache-Control', 'no-cache, no-store, must-revalidate'
+    'Content-Length', str $ sum $ map len @data
 
 
 FileResponse = subclass Response where
@@ -84,7 +73,7 @@ FileResponse = subclass Response where
   __init__ = code path headers bufsize: 65536 ~>
     @path    = path
     @bufsize = bufsize
-    Response.__init__ self code headers b''
+    @@__init__ code headers b''
 
   #: IO-specific headers. `Content-Length` is determined via `stat`.
   #:
@@ -93,6 +82,7 @@ FileResponse = subclass Response where
   defheaders = ~> list'
     except err => 'Content-Length', str (os.stat @path).st_size
            err :: OSError => abort 404
+    'Content-Type', fst (mimetypes.guess_type @path strict: False) or 'application/octet-stream'
 
   #: The contents of a file object.
   #:
@@ -120,15 +110,40 @@ redirect = path info: '' code: 303 headers: () ->
   raise exc
 
 
+#: Convert an arbitrary object into a response.
+#:
+#: Currently supported are strings and bytes (simple HTML responses in UTF-8), actual
+#: `Response`s, and `(code, [headers,] responsifyable)` tuples, as well as coroutines
+#: that return them.
+#:
+#: responsify :: object -> coroutine Response
+#:
+responsify = asyncio.coroutine $ r -> if
+  r :: Response => r
+  r :: bytes    => Response 200 () r
+  r :: str      => Response 200 () $ r.encode 'utf-8'
+  r :: tuple    =>
+    code, *headers, r = r
+    r = yield from $ responsify $ r
+    r.code = code
+    exhaust $ map r.headers.replace headers
+    r
+  otherwise => yield from $ responsify $ yield from r
+
+
+#: Create a json response. Unlike `json.dumps`, this specifies proper `Content-Type`.
+#:
+#: jsonify :: object -> Response
+#:
+jsonify = ob code: 200 headers: () -> JSONResponse code headers $ (json.dumps ob).encode 'utf-8'
+
+
 #: Serve a single static file.
 #:
 #: static :: str (Optional bool) (Optional (dict str str)) -> Response
 #:
 static = path attachment: True headers: () ->
-  mime    = fst $ mimetypes.guess_type path strict: False
-  headers = struct.Headers headers
-  attachment =>
-    # TODO specify `filename`.
-    headers.setdefault 'Content-Disposition' 'attachment'
-  headers.setdefault 'Content-Type' $ mime or 'application/octet-stream'
-  FileResponse 200 path headers
+  r = FileResponse 200 path headers
+  # TODO specify `filename`.
+  attachment => r.headers.setdefault 'Content-Disposition' 'attachment'
+  r

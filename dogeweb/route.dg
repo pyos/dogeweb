@@ -180,7 +180,7 @@ host = _constrouter $ (req:_) **: k ~>
   func req **: k
 
 
-#: Route on HTTP `Upgrate` header.
+#: Route on HTTP `Upgrade` header.
 #:
 #: If there is none, `http` is used.
 #:

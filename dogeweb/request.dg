@@ -16,7 +16,7 @@ property = func builtin_property: property ->
     otherwise         => @__dict__ !! name := func self
 
 
-Request = subclass route.ContextAware where
+Request = subclass object where
   #: Incoming request data.
   #:
   #: app      :: Server   -- the instance of the application that handles this request.
@@ -29,6 +29,9 @@ Request = subclass route.ContextAware where
   #: ishead   :: bool       -- whether this is actually `HEAD` (`method` is `GET` in that case)
   #: version  :: (int, int) -- the HTTP version this request was made with.
   #: path     :: str        -- the requested path relative to the current routing module.
+  #: modpath  :: [str]      -- parts of `path` that reference parent modules.
+  #: modroute :: [Handler]  -- exactly these modules.
+  #: modname  :: [str]      -- names of these modules.
   #: query    :: str        -- the part of the path after `?`
   #: headers  :: Headers    -- additional HTTP headers as a dict-like object.
   #: payload  :: bytes      -- the request body.
@@ -37,7 +40,10 @@ Request = subclass route.ContextAware where
     @path, _, @query = path.partition '?'
     @ishead = @method == 'HEAD'
     @ishead => @method = 'GET'
-    (super Request self).__init__!
+    @modpath  = ['']
+    @modroute = [@handler]
+    @modname  = ['<root>']
+    @@__init__!
 
   #: Values of various `Accept-*` HTTP headers as dict-like objects.
   #:
@@ -49,6 +55,47 @@ Request = subclass route.ContextAware where
     charset  = ~> struct.AcceptCharset  $ http.accept $ @_req.headers.get 'accept-charset'
     language = ~> struct.AcceptLanguage $ http.accept $ @_req.headers.get 'accept-language'
     encoding = ~> struct.AcceptEncoding $ http.accept $ @_req.headers.get 'accept-encoding'
+
+  #: The requested path relative to the domain, not the current module.
+  #:
+  #: fullpath :: str
+  #:
+  fullpath = ~> @parent + @path
+
+  #: Path to the root of the current module.
+  #:
+  #: parent :: str
+  #:
+  parent = ~> ''.join @modpath
+
+  #: Get the URL that points to a route with the given name. The syntax is
+  #: the same as for Python imports: dot means a submodule, names that start
+  #: with a dot are relative to the current module, any additional dots
+  #: at the start refer to the parent modules.
+  #:
+  #: url_for :: str ** -> str
+  #:
+  url_for = (_:name) **: args ~>
+    #        ^-- this trick with pattern-matching mangles the name of the parameter,
+    #            making `url_for 'something' name: 'something_else'` valid.
+    #           (As a reminder: an `x:y` pattern assigns the value to both `x` and `y`.)
+    path = []
+    name.startswith '.' => path = list $ zip @modpath @modroute @modname
+    name.endswith   '.' => raise $ ValueError 'no endpoint name given'
+    # If this is a relative name, this will be popped off on the first iteration.
+    # If not, the root module is the one we want to start from anyway.
+    path.append $ head $ zip @modpath @modroute @modname
+
+    for part in name.split '.' => if
+      not path => raise $ ValueError 'relative name out of bounds'
+      not part => path.pop -1
+      otherwise =>
+        _, fn, m = last path
+        except err => path.append (fn.routes !! part !! 0, fn.routes !! part !! 1, part)
+               err :: AttributeError => raise $ TypeError  $ '{!r} is not a module'.format m
+               err :: KeyError       => raise $ ValueError $ '{!r} does not exist'.format part
+
+    route.concrete args $ ''.join $ map fst path
 
   #: A `dict`-like object that contains HTTP cookies.
   #:

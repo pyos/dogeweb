@@ -1,8 +1,7 @@
 import '/re'
 import '/functools'
 import '/collections'
-
-import 'http/unquote'
+import '/urllib/parse/unquote'
 
 
 #: Syntax for wildcards.
@@ -36,10 +35,10 @@ pathregex = path directory ->
   funcs = list!
 
   if not (path.endswith '/') and directory =>
-    raise $ ValueError $ '`{!r}` must end with a slash'.format path
+    raise $ ValueError $ '{!r} must end with a slash'.format path
 
   onwildcard = t name ->
-    not $ t in wildcards => raise $ ValueError $ 'wildcard type `{!r}` not supported'.format t
+    not $ t in wildcards => raise $ ValueError $ 'wildcard type {!r} not supported'.format t
     names.append name
     funcs.append $ wildcards !! t !! 1
     '(?P<{}>{})'.format name $ wildcards !! t !! 0
@@ -59,7 +58,7 @@ pathregex = path directory ->
   directory, tuple names, tuple funcs, re.compile regex
 
 
-#: Substitute values for wildcards in a path.
+#: Given a path template and the matched values, reconstruct the original path.
 #:
 #: concrete :: (dict str object) str -> str
 #:
@@ -71,8 +70,8 @@ concrete = args path -> re.sub r'/+' '/' $ WILDCARDRE.sub (m -> str $ args !! m.
 #: wraps :: (a -> b) (c -> d) -> (c -> d)
 #:
 wraps = f g ->
-  # By default, `update_wrapper` override attributes defined on `g` with those
-  # defined on `f` if their names clash.
+  # `functools.update_wrapper` prefers attributes from `g` to those from `f`.
+  # We want to save as much information from `f` as possible.
   old, g.__dict__ = g.__dict__, f.__dict__.copy!
   g.__dict__.update old
   functools.update_wrapper g f updated: ()
@@ -81,15 +80,16 @@ wraps = f g ->
 #: Check whether a path matches the route. Return the length of the matched
 #: component and an iterable of (name, value) pairs that describe groups.
 #:
-#: _issameas :: str (tuple str, tuple (str -> a), Regex) -> Maybe (int, iter (str, a))
+#: _issameas :: str (bool, [str], [str -> a], Regex) -> Maybe (int, iter (str, a))
 #:
-_issameas = path (d, ns, fs, regex) -> (m = regex.match path) and (d or m.end! == len path) => m.end! - 1,
-  where for (name, f, value) in zip ns fs m.groups! => yield (name, f $ unquote value)
+_issameas = path (d, ns, fs, regex) ->
+  (m = regex.match path) and (d or m.end! == len path) => m.end! - 1,
+    where for (name, f, value) in zip ns fs m.groups! => yield (name, f $ unquote value)
 
 
 #: Redirect to the same path, but with a slash appended.
 #:
-#: slash :: Request -> Response
+#: _slash :: Request -> Response
 #:
 _slash = req **: _ -> req.redirect code: 301 $ req.fullpath + '/'
 
@@ -98,7 +98,7 @@ _slash = req **: _ -> req.redirect code: 301 $ req.fullpath + '/'
 #: on some constant value. For example:
 #:
 #:    router = _constrouter $ request **: args ~>
-#:      ... iterate over (constant, handler) tuples in `@choices` ...
+#:      ... iterate over (constant, (name, handler)) tuples in `@choices.items!` ...
 #:      ... call one of the handlers ...
 #:
 #:    handler = router
@@ -126,6 +126,7 @@ _constrouter = __call__ ->
       if not $ t :: tuple => raise $ TypeError 'each argument must be a 2- or 3-tuple'
          len t == 2 => t !! 0, getattr (t !! 1) '__name__' '<?>', t !! 1
          len t == 3 => t
+         otherwise  => raise $ TypeError 'each argument must be a 2- or 3-tuple'
     None
 
   route = key  ~>  handler -> @add key (getattr handler '__name__' '<?>') handler
@@ -160,12 +161,14 @@ _pathrouter = f directory: False -> subclass $ _constrouter f where
     handler
 
 
-#: Route on HTTP `Host` header. A handler matches iff `Host` is a non-strict
-#: subdomain of a mask. An empty string matches everything.
+#: Route on HTTP `Host` header.
+#:
+#: A handler matches iff `Host` is either a subdomain of a mask, or matches exactly.
+#: An empty string matches everything. The port may be checked, too. The most specific
+#: match wins.
+#:
 host = _constrouter $ (req:_) **: k ~>
-  # NOTE the reason the first argument is named wierdly is to avoid clashes with
-  #   keyword argument names. Since Python does not allow patterns as arguments,
-  #   it will be named `<pattern:0>` by dg.
+  #                    ^-- using this trick to mangle the name of the argument again.
   host = req.headers.get 'Host' ''
   func = None
   while func is None =>
@@ -177,39 +180,53 @@ host = _constrouter $ (req:_) **: k ~>
   func req **: k
 
 
-#: Allow upgrading to different protocols.
-#: Uses HTTP `Upgrade` to choose between functions. `http` is the default.
+#: Route on HTTP `Upgrate` header.
+#:
+#: If there is none, `http` is used.
+#:
 upgrade = _constrouter $ (req:_) **: k ~>
   _, handler = @choices.get (str.lower $ req.headers.get 'Upgrade' 'http') (None, None)
   if handler   => handler req **: k
      otherwise => req.abort 505
 
 
-#: Route on HTTP `Accept`.
+#: Route on HTTP `Accept`. The branch with the highest quality is selected.
+#:
+#: Alternatively, if you're only interested in JSON, check `request.isjson`.
+#:
 accept = _constrouter $ (req:_) **: k ~>
   key = max @choices key: req.accept.mime.__getitem__
   (@choices !! key !! 0) req **: k
 
 
-#: Route on HTTP method. Method names are uppercase.
-#: `HEAD` is routed to `GET` unless redefined.
+#: Route on HTTP method. Method names are uppercase. `HEAD` is routed to `GET`.
+#:
+#: Alternatively, use `if` to check `request.method`. That may be faster.
+#:
 method = _constrouter $ (req:_) **: k ~>
   _, handler = @choices.get req.method (None, None)
   if handler   => handler req **: k
      otherwise => req.abort 405
 
 
-#: Reject non-GET/HEAD requests.
+#: Reject methods not on the list with HTTP 405.
 #:
-#: get :: (a -> b) -> (a -> b)
+#: only :: [str] Handler -> Handler
 #:
-get = f -> wraps f $ (req:_) **: k -> if
-  req.method == 'GET' => f req **: k
+only = allowed f -> wraps f $ (req:_) **: k -> if
+  req.method in allowed => f req **: k
   otherwise => req.abort 405
 
 
-#: Route on HTTP path. If a request was made to `/something` and a route was found
-#: that matches `/something/`, a redirect is issued.
+get = bind only ['GET']
+
+
+#: Route on path relative to the current module.
+#:
+#: If a request was made to `/something` and a route was found
+#: that matches `/something/`, a redirect is issued. Paths may contain wildcards;
+#; see `pathregex`, etc. above.
+#:
 path = _pathrouter $ (req:_) **: k ~> next $
   where
     for (path, _, fn) in @ordered =>
@@ -219,16 +236,16 @@ path = _pathrouter $ (req:_) **: k ~> next $
     req.abort 404
 
 
-#: Route between multiple other routers as if they were subdirectories::
+#: Route between submodules:
 #:
 #:   r.dir
-#:     '/dir1/', r.file
+#:     '/dir1/', r.path
 #:       '/file1', handler1  #=> /dir1/file1
 #:       '/file2', handler2  #=> /dir1/file2
-#:     '/', r.file
+#:     '/', r.path
 #:       '/file3', handler3  #=> /file3
 #:
-#: Directory names may contain fields, just like file names.
+#: Submodule paths must always end with a slash. They still may contain wildcards.
 #:
 dir = _pathrouter directory: True $ (req:_) **: k ~> next $
   where
@@ -241,54 +258,3 @@ dir = _pathrouter directory: True $ (req:_) **: k ~> next $
         k.update $ snd match
         yield    $ fn req **: k
     req.abort 404
-
-
-ContextAware = subclass object where
-  #: Methods added to `Request` objects since they require fields only available in it.
-  #:
-  #: modpath  :: [str]     -- parts of `path` sliced off by `dir`.
-  #: modroute :: [Handler] -- functions that correspond to these parts.
-  #: modname  :: [str]     -- names of these functions.
-  #:
-  __init__ = *: a **: k ~>
-    (super ContextAware self).__init__ *: a **: k
-    @modpath  = list' ''
-    @modroute = list' @handler
-    @modname  = list' '<root>'
-    None
-
-  #: The requested path relative to `/`, not the current module.
-  #:
-  #: fullpath :: str
-  #:
-  fullpath = ~> @parent + @path
-
-  #: Path to the current module.
-  #:
-  #: parent :: str
-  #:
-  parent = ~> ''.join @modpath
-
-  #: Get the URL that points to a route named `n`.
-  #: Paths that start with a dot are relative to the current context, similar
-  #: to Python relative imports.
-  #:
-  #: url_for :: str ** -> str
-  #:
-  url_for = __name **: args ~>
-    name   = __name.split '.'
-    parent = 1
-    while name !! 0 == '' =>
-      name.pop 0
-      parent -= 1
-
-    xs = list (zip @modpath @modroute @modname) !! slice None (parent or None)
-    not xs   => raise $ ValueError 'relative name out of bounds'
-    not name => raise $ ValueError 'no route name'
-
-    for n in name =>
-      _, fn, m = xs !! -1
-      except err => xs.append (fn.routes !! n !! 0, fn.routes !! n !! 1, n)
-             err :: AttributeError => raise $ TypeError  $ '`{!r}` is not a namespace'.format m
-             err :: KeyError       => raise $ ValueError $ '`{!r}` does not exist'.format n
-    concrete args $ ''.join $ map fst xs

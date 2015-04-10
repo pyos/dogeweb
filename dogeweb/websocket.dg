@@ -9,85 +9,16 @@ import 'route'
 import 'response'
 
 
-Error = subclass Exception where
-GUID  = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-CONT  = 0x0
-TEXT  = 0x1
-DATA  = 0x2
-CLOSE = 0x8
-PING  = 0x9
-PONG  = 0xa
-SHORT = 0xFFFF
-LONG  = 0xFFFFFFFFFFFFFFFF
-!=?   = a b -> not $ b.lower!.strip! in list (map str.strip $ a.lower!.split ',')
-
-
-#: ???
-#:
-#: parse :: StreamReader -> coroutine Message
-#:
-parse = buf ->
-  fin, code, *data = yield from $ parse_frame buf
-
-  while not fin =>
-    fin, cont, part = yield from $ parse_frame buf
-    cont != CONT => raise $ Error 'unexpected opcode in continuation frame'
-    data.append part
-  data = b''.join data
-
-  if code != CLOSE => Message code data None
-     otherwise     =>
-       code = data !! slice None 2
-       rest = data !! slice 2 None
-       Message CLOSE rest (int.from_bytes code 'big')
-
-
-#: ???
-#:
-#: parse_frame :: StreamReader -> coroutine (int, int, bytes)
-#:
-parse_frame = buf ->
-  head = yield from $ buf.readexactly 2
-  head = int.from_bytes head 'big'
-
-  # fin -- 0 if more frames from the same message follow.
-  # rsv -- reserved fields, must be 0.
-  fin    = (head & 0x8000) >> 15
-  rsv    = (head & 0x7000) >> 12
-  code   = (head & 0x0F00) >> 8
-  masked = (head & 0x0080) >> 7
-  length = (head & 0x007F)
-
-  rsv => raise $ Error 'non-zero reserved value'
-  code > 0x7 and not fin      => raise $ Error => 'fragmented control frame'
-  code > 0x7 and length > 125 => raise $ Error => 'control frame payload length invalid'
-
-  length = if
-    length == 126 => int.from_bytes (yield from $ buf.readexactly 2) 'big'
-    length == 127 => int.from_bytes (yield from $ buf.readexactly 8) 'big'
-    otherwise     => length
-
-  mask = itertools.cycle $ if
-    masked    => yield from $ buf.readexactly 4
-    otherwise => 0, 0, 0, 0
-
-  fin, code, bytes $ map (^) mask $ if
-    length    => yield from $ buf.readexactly length
-    otherwise => b''
+CONT, TEXT, DATA, _, _, _, _, _, CLOSE, PING, PONG, _, _, _, _, _ = range 16
+SHORT = (1 << 16) - 1  # max. size of a frame with 2-byte length field (7-bit len = 126)
+LONG  = (1 << 64) - 1  # max. size of a frame with 8-byte length field (7-bit len = 127)
+GUID  = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+# XXX ugly.
+inH   = a b -> a in map str.strip (b.lower!.split ',')
 
 
 Message = subclass object where
-  __new__ = tp data extra ~>
-    self = if
-      tp != TEXT => bytes.__new__ DataMessage data
-      otherwise  => str.__new__   TextMessage $ except
-        err => data.decode 'utf-8'
-        err :: UnicodeDecodeError => raise $ asyncio.CancelledError er
-
-    self.tp    = tp
-    self.extra = extra
-    self
-
+  # NOTE `tp` is assigned in `WebSocket.__next__`.
   is_ping  = ~> @tp == PING
   is_pong  = ~> @tp == PONG
   is_data  = ~> @tp == DATA
@@ -95,42 +26,88 @@ Message = subclass object where
   is_close = ~> @tp == CLOSE
 
 
-DataMessage = subclass Message bytes where
-TextMessage = subclass Message str   where
+Message.Data = subclass Message bytes where
+Message.Text = subclass Message str   where
 
 
 WebSocket = subclass object where
-  __init__ = self @loop @reader @writer @client ->
-  __iter__ = self -> while True =>
-    msg = except
-      err => yield from $ parse @reader
-      err :: asyncio.IncompleteReadError => raise asyncio.CancelledError
-    if msg.is_ping  => yield from $ @pong msg
-       msg.is_close => raise $ asyncio.CancelledError msg
-       otherwise    => raise $ StopIteration msg
+  __init__ = @loop @reader @writer @client ~>
+    # If `next_message` is interrupted by a control frame while waiting
+    # for the next part of a continued data frame, this will contain
+    # that partial data frame (while the control frame will be returned.)
+    @cont = None
+    None
 
-  _frame = code fin data ~>
+  #: Receive a single message from the stream or cancel on disconnect,
+  #: all while automatically responding to pings.
+  #:
+  #: self :: coroutine Message
+  #:
+  __iter__ = self ->
+    while True =>
+      code, data = except
+        err => yield from @next_message
+        err :: UnicodeDecodeError          => raise $ asyncio.CancelledError err
+        err :: asyncio.IncompleteReadError => raise $ asyncio.CancelledError err
+
+      msg = if code == TEXT  => Message.Text $ data.decode 'utf-8'
+               code == CLOSE => Message.Data $ data !! slice 2 None
+               otherwise     => Message.Data   data
+      msg.tp = code
+
+      if msg.is_ping  => yield from $ @pong msg
+         msg.is_close => raise $ asyncio.CancelledError msg
+         otherwise    => raise $ StopIteration msg
+
+  next_message = ~>
+    fin, code, data = @cont or yield from @next_frame
+    while not fin =>
+      fin, ctrl, part = yield from @next_frame
+      fin and ctrl != CONT =>
+        @cont = False, code, data
+        raise $ StopIteration (ctrl, part)
+      @cont = None
+      data += part
+    code, data
+
+  next_frame = ~>
+    h1, h2 = yield from $ @reader.readexactly 2
+    fin  = h1 & 0x80 |> bool
+    code = h1 & 0x0F
+    mask = h2 & 0x80 |> bool
+    size = h2 & 0x7F
+    code > 0x7 and not fin => raise $ asyncio.IncompleteReadError 'fragmented control frame'
+
+    size = if size == 126 => int.from_bytes (yield from $ @reader.readexactly 2) 'big'
+              size == 127 => int.from_bytes (yield from $ @reader.readexactly 8) 'big'
+              otherwise   => size
+    mask = mask => yield from $ @reader.readexactly 4
+    data =         yield from $ @reader.readexactly size
+
+    fin, code, if mask      => bytes $ map (^) data $ itertools.cycle mask
+                  otherwise => data
+
+  send_frame = fin code data ~>
     ln   = len data
     fin  = bool fin     << 7
     mask = bool @client << 7
-    @writer.write $ if ln <= 125   => struct.pack '!BB'  (fin | code) (mask | ln)
-                       ln <= SHORT => struct.pack '!BBH' (fin | code) (mask | 126) ln
-                       ln <= LONG  => struct.pack '!BBQ' (fin | code) (mask | 127) ln
-                       otherwise   => raise $ ValueError 'frame too long (>= 4 GiB)'
+    head = if ln <= 125   => struct.pack '!BB'  (fin | code) (mask | ln)
+              ln <= SHORT => struct.pack '!BBH' (fin | code) (mask | 126) ln
+              ln <= LONG  => struct.pack '!BBQ' (fin | code) (mask | 127) ln
+              otherwise   => raise $ ValueError 'frame too long (>= 4 GiB, somehow)'
     mask => mask = random.getrandbits 32 |>.to_bytes 4 'big'
-    @writer.write $ if
-      mask      => mask + bytes (map (^) data $ itertools.cycle mask)
+    @writer.write $ head + if
+      mask      => bytes $ map (^) (b'\0\0\0\0' + data) $ itertools.cycle mask
       otherwise => data
     @writer.drain!
 
-  ping  = data ~> @_frame PING True data
-  pong  = data ~> @_frame PONG True data
-  data  = data ~> @_frame DATA True data
-  text  = data ~> @_frame TEXT True $ data.encode 'utf-8'
-  close = code: 1000 data: b'' mask: False ~>
-    except err => yield from $ @_frame CLOSE True $ code.to_bytes 2 'big' + data
-           err :: ConnectionError =>
-    raise $ asyncio.CancelledError 'closed from this side'
+  ping  = data ~> @send_frame True PING data
+  pong  = data ~> @send_frame True PONG data
+  data  = data ~> @send_frame True DATA data
+  text  = data ~> @send_frame True TEXT $ data.encode 'utf-8'
+  close = code: 1000 data: b'' ~>
+    yield from $ @send_frame True CLOSE $ code.to_bytes 2 'big' + data
+    raise ConnectionError
 
   #: Read frames from multiple websockets at once, return a (websocket, frame) pair
   #: every time a frame is received.
@@ -157,7 +134,7 @@ Response = subclass response.Response where
   #:
   __init__ = handler @key @req @kwargs ~>
     @handler = asyncio.coroutine handler
-    response.Response.__init__ self 101 dict! b''
+    @@__init__ 101 () b''
 
   #: WebSocket handshake headers.
   #:
@@ -173,7 +150,8 @@ Response = subclass response.Response where
   #:
   #: communicate :: StreamReader StreamWriter -> coroutine a
   #:
-  communicate = reader writer ~> @handler @req **: @kwargs $ WebSocket @req.loop reader writer False
+  communicate = reader writer ~>
+    @handler @req **: @kwargs $ WebSocket @req.loop reader writer False
 
 
 #: Create a request handler that initiates a WebSocket connection
@@ -182,8 +160,8 @@ Response = subclass response.Response where
 #:
 endpoint = handler -> route.wraps handler $ **: k ~>
   if @method != 'GET' => @abort 405 headers: (dict allow: 'GET')
-     @headers.get 'Upgrade'    !=? 'websocket' => @abort 400 'This is a websocket node.'
-     @headers.get 'Connection' !=? 'upgrade'   => @abort 400 '`Connection: upgrade`?'
+     not $ 'websocket' `inH` @headers.get 'Upgrade'    => @abort 400 'This is a websocket node.'
+     not $ 'upgrade'   `inH` @headers.get 'Connection' => @abort 400 '`Connection: upgrade`?'
 
   ver = @headers.get 'Sec-WebSocket-Version'
   key = @headers.get 'Sec-WebSocket-Key'
@@ -261,9 +239,7 @@ client = path rd wr ->
     header == b'\r\n' => break!
     n, val = header.split b' ' 1
     if n.lower! == b'sec-websocket-accept' =>
-      # base64.b64encode (hashlib.sha1 $ @key.encode 'ascii' + GUID).digest!).decode 'ascii'
       chk = base64.b64decode val.strip!
-      chk != (hashlib.sha1 $ key + GUID).digest! =>
-        raise $ ConnectionError 'key check error'
+      chk != (hashlib.sha1 $ key + GUID).digest! => raise $ ConnectionError 'key check error'
 
   WebSocket rd._loop rd wr True

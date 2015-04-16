@@ -144,7 +144,7 @@ _constrouter = __call__ ->
 #:
 #:   directory -- whether to require all paths to end with a slash and allow partial matches.
 #:
-_pathrouter = f directory: False -> subclass $ _constrouter f where
+_pathrouter = __call__ directory: False -> subclass $ _constrouter __call__ where
   add = path name handler ~>
     path   = re.sub r'/+' '/' path
     pathre = pathregex path directory

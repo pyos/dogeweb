@@ -4,14 +4,14 @@ import '/asyncio'
 import '/gunicorn/workers/base'
 
 
-Worker = subclass base.Worker where run = self ->
+Worker = subclass base.Worker where run = self http2: False ->
   loop = asyncio.new_event_loop!
   asyncio.get_event_loop!.close!
   asyncio.set_event_loop loop
   loop.call_soon $
     _notify = ->
       @notify!
-      not @alive or @ppid != os.getppid! => loop.stop!
+      @ppid != os.getppid! or not @alive => loop.stop!
       loop.call_later 1 _notify
 
   ctx = None
@@ -20,19 +20,4 @@ Worker = subclass base.Worker where run = self ->
     ctx.load_cert_chain certfile: @cfg.certfile keyfile: @cfg.keyfile
 
   @wsgi.timeout = @cfg.keepalive
-  @wsgi.run sock: @sockets loop: loop backlog: @cfg.backlog http2: (@cfg.settings.get 'http2') ssl: ctx
-
-
-WorkerNG = subclass Worker where except
-  err =>
-    import '/aiouv'
-    import '/h2py'
-  err :: ImportError =>
-    __init__ = *: _ **: _ ~>
-      raise err
-
-  err is None =>
-    run = self ->
-      @cfg.settings !! 'http2' = True
-      asyncio.set_event_loop_policy aiouv.EventLoopPolicy!
-      Worker.run self
+  @wsgi.run sock: @sockets loop: loop backlog: @cfg.backlog http2: http2 ssl: ctx

@@ -12,8 +12,6 @@ import 'request'
 import 'response'
 import 'response/Abort'
 
-SOCKET_KEEPALIVE = hasattr socket 'SO_KEEPALIVE'
-
 
 Server = subclass object where
   __init__ = handler onerror: None timeout: 15 static_dir: None ~>
@@ -28,14 +26,9 @@ Server = subclass object where
   #:
   #: run :: * ** -> ()
   #:
-  run = *: a loop: None http2: False **: k ~>
+  run = *: a loop: None **: k ~>
     loop = loop or asyncio.get_event_loop!
-
-    srv = if
-      http2 =>
-        impl = import 'http2' pure
-        impl.run self *: a loop: loop **: k
-      otherwise => loop.run_until_complete $ util.start_server *: a **: k loop: loop $ self loop
+    srv  = loop.run_until_complete $ util.start_server *: a **: k loop: loop $ self loop
     except _       => loop.run_forever!
            finally => srv.close!
 
@@ -44,26 +37,21 @@ Server = subclass object where
   #: () :: EventLoop -> StreamReader StreamWriter -> coroutine a
   #:
   __call__ = loop ~> reader writer -> except
-    err =>
-      SOCKET_KEEPALIVE =>
-        sock = writer.transport.get_extra_info 'socket'
-        sock.setsockopt socket.SOL_SOCKET socket.SO_KEEPALIVE 1
+    err => while True =>
+      req = request.Request self @handler loop reader writer @log *:
+        except
+          e2 => yield from $ util.timelimit @timeout loop: loop $ http.io_request reader
+          e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
+          e2 :: IncompleteReadError => raise CancelledError
 
-      while True =>
-        req = request.Request self @handler loop reader writer @log *:
-          except
-            e2 => yield from $ util.timelimit @timeout loop: loop $ http.io_request reader
-            e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
-            e2 :: IncompleteReadError => raise CancelledError
-
-        resp = yield from $ @respond req
-        data = if req.ishead => ()
-                  otherwise  => resp.data
-        yield from $ http.io_response writer req.version resp.code resp.headers data
-        yield from $ resp.communicate reader writer
-        close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
-                'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers
-        close => raise CancelledError
+      resp = yield from $ @respond req
+      data = if req.ishead => ()
+                otherwise  => resp.data
+      yield from $ http.io_response writer req.version resp.code resp.headers data
+      yield from $ resp.communicate reader writer
+      close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
+              'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers
+      close => raise CancelledError
     err :: CancelledError       => raise err
     err :: ConnectionError      =>
     err :: ConnectionResetError =>

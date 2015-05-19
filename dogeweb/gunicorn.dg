@@ -4,7 +4,7 @@ import '/asyncio'
 import '/gunicorn/workers/base'
 
 
-Worker = subclass base.Worker where run = self http2: False ->
+Worker = subclass base.Worker where run = self ->
   loop = asyncio.new_event_loop!
   asyncio.get_event_loop!.close!
   asyncio.set_event_loop loop
@@ -20,4 +20,4 @@ Worker = subclass base.Worker where run = self http2: False ->
     ctx.load_cert_chain certfile: @cfg.certfile keyfile: @cfg.keyfile
 
   @wsgi.timeout = @cfg.keepalive
-  @wsgi.run sock: @sockets loop: loop backlog: @cfg.backlog http2: http2 ssl: ctx
+  @wsgi.run sock: @sockets loop: loop backlog: @cfg.backlog ssl: ctx

@@ -40,15 +40,15 @@ Server = subclass object where
     err => while True =>
       req = request.Request self @handler loop reader writer @log *:
         except
-          e2 => yield from $ util.timelimit @timeout loop: loop $ http.io_request reader
+          e2 => await util.timelimit @timeout loop: loop $ http.io_request reader
           e2 :: ValueError          => @log.debug 'bad request' exc_info: 1, raise CancelledError
           e2 :: IncompleteReadError => raise CancelledError
 
-      resp = yield from $ @respond req
+      resp = await @respond req
       data = if req.ishead => ()
                 otherwise  => resp.data
-      yield from $ http.io_response writer req.version resp.code resp.headers data
-      yield from $ resp.communicate reader writer
+      await http.io_response writer req.version resp.code resp.headers data
+      await resp.communicate reader writer
       close = 'close' in resp.headers.get 'connection' '' or req.version < (1, 1) or
               'close' in req .headers.get 'connection' '' or 'upgrade' in resp.headers
       close => raise CancelledError
@@ -56,7 +56,7 @@ Server = subclass object where
     err :: ConnectionError      =>
     err :: ConnectionResetError =>
     err :: Exception => @log.fatal 'error in http handler' exc_info: True, raise CancelledError
-    finally => writer.close!
+    finally => not loop.is_closed! => writer.close!
 
   #: Handle a request as neatly as possible.
   #:
@@ -64,7 +64,7 @@ Server = subclass object where
   #:
   respond = req ~> except
     outer => except
-      inner => yield from $ response.responsify $ if
+      inner => await response.responsify $ if
         @static and req.path.startswith '/static/' =>
           req.static $ os.path.join @static $
                        os.path.normpath (req.path !! slice 7 None) !! slice 1 None
@@ -74,11 +74,11 @@ Server = subclass object where
       inner :: Exception      => req.abort 500  # `inner` is stored as `__context__`.
     outer :: Abort => except
       middle => except
-        inner => yield from $ response.responsify $ @onerror req outer
+        inner => await response.responsify $ @onerror req outer
         inner :: Abort          => raise inner
         inner :: CancelledError => raise inner
         inner :: Exception      => req.abort 500
-      middle :: Abort => yield from $ response.responsify $ @error req middle
+      middle :: Abort => await response.responsify $ @error req middle
 
   #: The default error handler. Do not use it. EVER.
   #:

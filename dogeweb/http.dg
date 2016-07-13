@@ -164,7 +164,7 @@ io_request = reader ->
   buffer = b''
   marker = False
   while not marker =>
-    buffer += yield from (reader.read 8196) or raise ConnectionError
+    buffer += await reader.read 8196 or raise ConnectionError
     buffer, marker, rest = buffer.partition b'\r\n\r\n'
   reader._buffer = bytearray rest + reader._buffer
 
@@ -177,8 +177,8 @@ io_request = reader ->
   body_encoding = _headers.get 'content-encoding'
   body_transfer = _headers.get 'transfer-encoding'
   _payload = if
-    body_transfer == 'chunked' => yield from $ io_payload_chunked reader
-    body_length                => yield from $ reader.readexactly $ int body_length
+    body_transfer == 'chunked' => await io_payload_chunked reader
+    body_length                => await reader.readexactly $ int body_length
     otherwise                  => b''
   if body_encoding == 'deflate' => _payload = zlib.decompress _payload 15
      body_encoding == 'gzip'    => _payload = zlib.decompress _payload 31
@@ -195,12 +195,12 @@ io_request = reader ->
 io_payload_chunked = reader ->
   data = b''
   while True =>
-    line   = yield from $ reader.readline!
+    line   = await reader.readline!
     length = int ((line.decode 'ascii').partition ';' !! 0) 16
     length == 0 => break!
-    data  += yield from $ reader.readexactly length
-    yield from (reader.readexactly 2) != b'\r\n' => raise ValueError
-  yield from $ reader.readline!
+    data  += await reader.readexactly length
+    await reader.readexactly 2 != b'\r\n' => raise ValueError
+  await reader.readline!
   data
 
 
@@ -219,4 +219,4 @@ io_response = writer (major, minor) code headers body ->
         writer.write $ ('%x\r\n' % len chunk).encode 'ascii' + chunk + b'\r\n'
       writer.write b'0\r\n\r\n'
     otherwise => for chunk in body => writer.write chunk
-  yield from writer.drain!
+  writer.drain!

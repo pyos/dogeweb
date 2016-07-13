@@ -11,22 +11,22 @@ StreamReaderProtocol = subclass asyncio.StreamReaderProtocol where
     @task = None
     @@__init__ loop: loop
       asyncio.StreamReader loop: loop
-      r w -> (@task = asyncio.async loop: loop $ @callback r w)
+      r w -> (@task = asyncio.ensure_future loop: loop $ @callback r w)
 
   connection_lost = exc ~>
     @task => @task.cancel!
     @@connection_lost exc
 
 
-#: `yield from` with a time limit.
+#: `await` with a time limit.
 #:
 #: timelimit :: float (Either (coroutine a) (Future a)) (Optional EventLoop) -> coroutine a
 #:
 timelimit = delay task loop: None ->
   loop   = loop or asyncio.get_event_loop!
-  task   = asyncio.async task loop: loop
+  task   = asyncio.ensure_future task loop: loop
   handle = loop.call_later delay task.cancel
-  except _       => yield from task
+  except _       => await task
          finally => handle.cancel!
 
 
@@ -52,4 +52,4 @@ create_server = protocol_factory *: a loop: None sock: None ssl: None **: k ->
         s.setblocking False
         loop._start_serving protocol_factory s ssl server
       server
-    otherwise => yield from $ loop.create_server protocol_factory *: a sock: sock ssl: ssl **: k
+    otherwise => await loop.create_server protocol_factory *: a sock: sock ssl: ssl **: k

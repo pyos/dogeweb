@@ -118,17 +118,17 @@ redirect = path info: '' code: 303 headers: () ->
 #:
 #: responsify :: object -> coroutine Response
 #:
-responsify = asyncio.coroutine $ r -> if
+responsify = async $ r -> if
   r :: Response => r
   r :: bytes    => Response 200 () r
   r :: str      => Response 200 () $ r.encode 'utf-8'
   r :: tuple    =>
     code, *headers, r = r
-    r = yield from $ responsify $ r
+    r = await responsify r
     r.code = code
     exhaust $ map r.headers.replace headers
     r
-  otherwise => yield from $ responsify $ yield from r
+  otherwise => await responsify $ await r
 
 
 #: Create a json response. Unlike `json.dumps`, this specifies proper `Content-Type`.

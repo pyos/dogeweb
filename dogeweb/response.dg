@@ -37,7 +37,7 @@ Response = subclass object where
 
   #: Headers that will be sent unless overriden when constructing a response.
   #:
-  #: defheaders :: { convertable to struct.Headers }
+  #: defheaders :: { convertible to struct.Headers }
   #:
   defheaders = ~> list'
     'Content-Type',   'text/html; charset=utf-8'

@@ -1,15 +1,10 @@
 import '/os'
 import '/itertools'
-import '/collections'
 
 import '/dogeweb'
 import '/dogeweb/r'
 import '/dogeweb/property'
 import '/dogeweb/websocket'
-
-
-monotonic = itertools.count!
-clients   = set!
 
 
 app = dogeweb.app $ r.path
@@ -18,34 +13,24 @@ app = dogeweb.app $ r.path
     # If the client does not want to change protocols, it will use `http`.
     'http', ~> @static attachment: False $ os.path.join (os.path.dirname __file__) 'websocket.html'
 
-    # `websocket.endpoint` adds a new argument to the handler, which is a
-    # WebSocket connection.
-    'websocket', dogeweb.websocket.endpoint $ ch ~>
+    # `websocket.endpoint` adds a new argument to the handler, which is a WebSocket connection.
+    'websocket', dogeweb.websocket.endpoint $ ch clients: set! monotonic: itertools.count! ~>
       id = str $ next monotonic
-      # `ch` is a simple queue. Five methods send stuff to the client:
-      #   * `ping` requests a `pong`;
-      #   * `pong` responds to a `ping`;
-      #   * `close [code] [message]` gracefully ends the connection;
-      #   * `data something` transfers some binary data;
-      #   * `text something` transfers Unicode text.
-      for w in clients => yield from $ w.text $ 'S ' + id + ' connected'
+      # `ch.close [code] [message]` gracefully ends the connection;
+      # `ch.send <bytes>` transfers some binary data;
+      # `ch.send <string>` transfers Unicode text.
+      # None of them wait for the write buffer to be flushed, so they're synchronous.
+      for w in clients => w.send $ 'S ' + id + ' connected'
       clients.add ch
 
       except
-        err => while True =>
-          # And `yield from` returns the next message.
-          # If there are no more messages to be consumed, it cancels this task (i.e.
-          # raises `asyncio.CancelledError`.)
-          msg = yield from ch
-          # A message is either a bytestring or a unicode string with additional attributes
-          # `tp` (the opcode), `is_text`, `is_data`, `is_ping`, and `is_pong`.
-          # Pings are handled automatically, and pongs shouldn't bother you; the most
-          # important distinction is between text and data. `msg.is_text` iff `msg :: str`,
-          # otherwise `msg :: bytes`.
-          msg :: str => for w in clients => yield from $ w.text $ 'M ' + id + ' ' + msg
+        # The channel is also an async iterator of messages, which are
+        # byte strings or unicode strings, mirroring `send`.
+        err => async for msg in ch =>
+          msg :: str => for w in clients => w.send $ 'M ' + id + ' ' + msg
         finally =>
           clients.remove ch
-          for w in clients => yield from $ w.text $ 'S ' + id + ' disconnected'
+          for w in clients => w.send $ 'S ' + id + ' disconnected'
 
 
 app.run '0.0.0.0' 8000

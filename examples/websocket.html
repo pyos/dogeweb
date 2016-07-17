@@ -1,56 +1,46 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>A simple WebSocket chat</title>
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" />
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
-    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    <script language="javascript" type="text/javascript">
-      $(function() {
-        function log(system, uid, msg) {
-          $('#log').prepend(
-            $('<div>').text(': ' + msg).prepend(
-              $('<span>').addClass(system ? 'text-danger' : 'text-success').text(uid)
-            )
-          );
-        }
+    <head>
+        <meta charset="utf-8" />
+        <title>websocket broadcast</title>
+    </head>
+    <body>
+        <form><input type="text" /> <button type="submit">Send</button></form>
+        <samp></samp>
+        <script>
+            let log = (system, uid, msg) => {
+                let root = document.querySelector('samp');
+                let node = document.createElement('div');
+                let name = document.createElement('span');
+                let text = document.createElement('span');
+                name.style.color = system ? '#900' : '#090';
+                name.textContent = uid;
+                text.textContent = msg;
+                node.appendChild(name);
+                node.appendChild(document.createTextNode(': '));
+                node.appendChild(text);
+                if (root.children.length)
+                    root.insertBefore(node, root.children[0]);
+                else
+                    root.appendChild(node);
+            };
 
-        var uri = (window.location.protocol=='https:' ? 'wss://' : 'ws://') + window.location.host;
-        log(true, '?', 'connecting');
+            log(true, '?', 'connecting');
+            let conn = new WebSocket((window.location.protocol=='https:' ? 'wss://' : 'ws://') + window.location.host);
+            conn.onopen    = e => log(true, '?', 'connected');
+            conn.onclose   = e => log(true, '?', 'disconnected');
+            conn.onmessage = e => {
+                let xs = e.data.split(' ', 2);
+                log(xs[0] == 'S', xs[1], e.data.slice(xs[0].length + xs[1].length + 2));
+            };
 
-        var conn = new WebSocket(uri);
-        conn.onopen    = function()  { log(true, '?', 'connected'); };
-        conn.onclose   = function()  { log(true, '?', 'disconnected'); };
-        conn.onmessage = function(e) {
-          var xs = e.data.split(' ', 2);
-          log(xs[0] == 'S', xs[1], e.data.slice(xs[0].length + xs[1].length + 2));
-        };
-
-        $('#chatform').on('submit', function () {
-          conn.send($('#text').val());
-          $('#text').val('').focus();
-          return false;
-        });
-      });
-    </script>
-    <style>
-      .input-group { display: inline-block; }
-      .input-group .form-control { width: auto; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <form id="chatform">
-        <div class="input-group">
-          <input class="form-control" id="text" type="text" />
-          <div class="input-group-btn">
-            <button class="btn btn-success" type="submit">Send</button>
-          </div>
-        </div>
-      </form>
-      <samp id="log"></samp>
-    </div>
-  </body>
+            document.querySelector('form').addEventListener('submit', ev => {
+                ev.preventDefault();
+                let text = ev.target.querySelector('input');
+                conn.send(text.value);
+                text.value = '';
+                text.select();
+            });
+        </script>
+    </body>
 </html>

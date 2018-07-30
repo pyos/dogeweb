@@ -132,7 +132,7 @@ WebSocket = subclass object where
                       otherwise                   => 1011
       self.transport.close!
 
-  __aiter__ = async $ self -> self
+  __aiter__ = self -> self
   __anext__ = async $ self -> except
     err =>
       contd = None
@@ -171,7 +171,7 @@ WebSocket = subclass object where
         yield (asyncio.ensure_future s.__anext__! loop: self.loop, s))
 
     JointIterator = subclass object where
-      __aiter__ = async $ self -> self
+      __aiter__ = self -> self
       __anext__ = async $ self ->
         done, _ = await asyncio.wait tasks loop: self.loop return_when: asyncio.FIRST_COMPLETED
         done =>
